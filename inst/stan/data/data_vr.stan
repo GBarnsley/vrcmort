@@ -1,22 +1,21 @@
-  int<lower=1> N;                      // number of observed cells
+  int<lower=1> N;                      // number of (time, age, sex, cause) groups
   int<lower=1> R;
   int<lower=1> T;
   int<lower=1> A;
   int<lower=1> S;
   int<lower=1> G;                      // e.g. 2: trauma, non-trauma
 
-  array[N] int<lower=1, upper=R> region;
   array[N] int<lower=1, upper=T> time;
   array[N] int<lower=1, upper=A> age;
   array[N] int<lower=1, upper=S> sex;
   array[N] int<lower=1, upper=G> cause;
 
-  array[N] int<lower=0> y;
+  array[N, R] int<lower=0> y;
   // person-time at risk (for example, population * days_in_period)
-  vector<lower=0>[N] exposure;
+  matrix<lower=0>[N, R] exposure;
 
   // conflict intensity proxy (recommend standardising in R)
-  vector[N] conflict;
+  matrix[N, R] conflict;
 
   // Optional structured extensions (set by the R interface)
   // 1 = enabled, 0 = disabled
@@ -27,14 +26,20 @@
 
   // additional covariates
   int<lower=0> K_mort;
-  matrix[N, K_mort] X_mort;
+  matrix[N * R, K_mort] X_mort;
 
   int<lower=0> K_rep;
-  matrix[N, K_rep] X_rep;
+  matrix[N * R, K_rep] X_rep;
 
   // post-conflict indicator by time index
   array[T] int<lower=0, upper=1> post;
   int<lower=1, upper=T> t0;
+
+  // Unlabeled (missing region) data
+  array[N] int<lower=0> y_miss;
+
+  // 1 = use missing label likelihood, 0 = ignore
+  int<lower=0, upper=1> use_mar_labels;
 
   // prior predictive mode
   int<lower=0, upper=1> prior_PD;
@@ -76,3 +81,6 @@
   real<lower=0> prior_delta_age_scale_scale;
 
   vector<lower=0>[G] prior_phi_rate;
+
+  real<lower=0> prior_omega_a;
+  real<lower=0> prior_omega_b;

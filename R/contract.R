@@ -36,10 +36,18 @@
 #' @export
 vrc_canonical_columns <- function() {
   c(
-    "region", "time", "age", "sex", "cause",
-    "y", "exposure", "pop",
+    "region",
+    "time",
+    "age",
+    "sex",
+    "cause",
+    "y",
+    "exposure",
+    "pop",
     "conflict",
-    "quality_flag", "quality_score", "weight"
+    "quality_flag",
+    "quality_score",
+    "weight"
   )
 }
 
@@ -91,22 +99,31 @@ vrc_validate_data <- function(
 
   # Determine exposure column
   if (is.null(exposure_col)) {
-    if ("exposure" %in% names(data)) exposure_col <- "exposure"
-    else if ("pop" %in% names(data)) exposure_col <- "pop"
-    else exposure_col <- NA_character_
+    if ("exposure" %in% names(data)) {
+      exposure_col <- "exposure"
+    } else if ("pop" %in% names(data)) {
+      exposure_col <- "pop"
+    } else {
+      exposure_col <- NA_character_
+    }
   }
   if (is.na(exposure_col) || !exposure_col %in% names(data)) {
     stop("Missing exposure column. Provide `exposure` or `pop`.", call. = FALSE)
   }
 
   # Optionally repair by creating exposure column
-  if (isTRUE(repair) && exposure_col == "pop" && !("exposure" %in% names(data))) {
+  if (
+    isTRUE(repair) && exposure_col == "pop" && !("exposure" %in% names(data))
+  ) {
     data$exposure <- data$pop
     exposure_col <- "exposure"
   }
 
   # Basic checks on identifiers
   for (nm in id_cols) {
+    if (nm == "region") {
+      next
+    }
     if (any(is.na(data[[nm]]))) {
       stop("Identifier column contains NA: ", nm, call. = FALSE)
     }
@@ -119,7 +136,9 @@ vrc_validate_data <- function(
   }
   y_non_na <- y[!is.na(y)]
   if (length(y_non_na)) {
-    if (any(y_non_na < 0)) stop("`", y_col, "` must be non-negative", call. = FALSE)
+    if (any(y_non_na < 0)) {
+      stop("`", y_col, "` must be non-negative", call. = FALSE)
+    }
     if (any(abs(y_non_na - round(y_non_na)) > 1e-8)) {
       stop("`", y_col, "` must be integer-like", call. = FALSE)
     }
@@ -127,8 +146,14 @@ vrc_validate_data <- function(
 
   # Exposure checks
   expo <- as.numeric(data[[exposure_col]])
-  if (any(is.na(expo))) stop("`", exposure_col, "` contains NA", call. = FALSE)
-  if (any(expo <= 0)) stop("`", exposure_col, "` must be > 0", call. = FALSE)
+  if (any(is.na(expo))) {
+    stop("`", exposure_col, "` contains NA", call. = FALSE)
+  }
+  # Enforce positive exposure only for rows where region is not NA
+  labeled_idx <- which(!is.na(data$region))
+  if (any(expo[labeled_idx] <= 0)) {
+    stop("`", exposure_col, "` must be > 0 for labeled regions", call. = FALSE)
+  }
 
   # Duplicated cell keys
   key_df <- data[id_cols]
@@ -139,7 +164,9 @@ vrc_validate_data <- function(
       paste(id_cols, collapse = ", "),
       ". Aggregate or deduplicate before fitting."
     )
-    if (duplicates == "error") stop(msg, call. = FALSE)
+    if (duplicates == "error") {
+      stop(msg, call. = FALSE)
+    }
     warning(msg, call. = FALSE)
   }
 
@@ -209,8 +236,12 @@ vrc_index <- function(
   )
 
   # Standardise core column names used throughout the package.
-  if (y_col != "y") df$y <- df[[y_col]]
-  if (conflict_col != "conflict") df$conflict <- df[[conflict_col]]
+  if (y_col != "y") {
+    df$y <- df[[y_col]]
+  }
+  if (conflict_col != "conflict") {
+    df$conflict <- df[[conflict_col]]
+  }
 
   # Normalise exposure column name. If the user only provides `pop`, treat it
   # as exposure by default.
@@ -224,7 +255,9 @@ vrc_index <- function(
 
   # Keep a `pop` column if possible for user convenience. If population is not
   # distinct from exposure, duplicate it.
-  if (!"pop" %in% names(df)) df$pop <- df$exposure
+  if (!"pop" %in% names(df)) {
+    df$pop <- df$exposure
+  }
 
   # Aggregate duplicates if requested
   key_df <- df[id_cols]
@@ -236,27 +269,35 @@ vrc_index <- function(
       stop("Package 'rlang' is required for duplicates = 'sum'", call. = FALSE)
     }
 
-    other_cols <- setdiff(names(df), c(id_cols, "y", "exposure", "pop", "conflict"))
-    gsyms <- rlang::syms(id_cols)
-    df <- dplyr::group_by(df, !!!gsyms)
-    df <- dplyr::summarise(
-      df,
-      y = sum(.data$y, na.rm = TRUE),
-      exposure = dplyr::first(.data$exposure),
-      pop = dplyr::first(.data$pop),
-      conflict = dplyr::first(.data$conflict),
-      dplyr::across(dplyr::all_of(other_cols), ~ dplyr::first(.x)),
-      .groups = "drop"
+    other_cols <- setdiff(
+      names(df),
+      c(id_cols, "y", "exposure", "pop", "conflict")
     )
+    gsyms <- rlang::syms(id_cols)
+    df <- df |>
+      dplyr::group_by(!!!gsyms) |>
+      dplyr::summarise(
+        y = sum(.data$y, na.rm = TRUE),
+        exposure = dplyr::first(.data$exposure),
+        pop = dplyr::first(.data$pop),
+        conflict = dplyr::first(.data$conflict),
+        dplyr::across(dplyr::all_of(other_cols), ~ dplyr::first(.x)),
+        .groups = "drop"
+      )
   }
 
-  # Factors for stable indexing
+  # Split into labeled and unlabeled data
+  is_miss <- is.na(df$region)
+  df_miss <- df[is_miss, , drop = FALSE]
+  df <- df[!is_miss, , drop = FALSE]
+
+  # Factors for stable indexing (using labeled data only for levels)
   df$region_f <- factor(df$region)
   df$age_f <- factor(df$age)
   df$sex_f <- factor(df$sex)
   df$cause_f <- factor(df$cause)
 
-  time_vals <- unique(df$time)
+  time_vals <- unique(c(df$time, df_miss$time))
   if (isTRUE(sort_time)) {
     time_vals <- sort(time_vals)
   }
@@ -268,15 +309,47 @@ vrc_index <- function(
   df$sex_id <- as.integer(df$sex_f)
   df$cause_id <- as.integer(df$cause_f)
 
+  # Process missing label data
+  if (nrow(df_miss) > 0) {
+    df_miss$time_f <- factor(df_miss$time, levels = time_vals)
+    df_miss$age_f <- factor(df_miss$age, levels = levels(df$age_f))
+    df_miss$sex_f <- factor(df_miss$sex, levels = levels(df$sex_f))
+    df_miss$cause_f <- factor(df_miss$cause, levels = levels(df$cause_f))
+
+    df_miss$time_id <- as.integer(df_miss$time_f)
+    df_miss$age_id <- as.integer(df_miss$age_f)
+    df_miss$sex_id <- as.integer(df_miss$sex_f)
+    df_miss$cause_id <- as.integer(df_miss$cause_f)
+
+    # Aggregate unlabeled data if not already unique
+    miss_keys <- c("time_id", "age_id", "sex_id", "cause_id")
+    df_miss <- df_miss |>
+      dplyr::summarise(
+        y = sum(.data$y, na.rm = TRUE),
+        exposure = 1, # Placeholder
+        conflict = 0,
+        .by = dplyr::all_of(miss_keys)
+      )
+  } else {
+    for (nm in c("time_id", "age_id", "sex_id", "cause_id")) {
+      df_miss[[nm]] <- integer(0)
+    }
+  }
+
   # Compute t0 index if provided
   t0_index <- NA_integer_
   if (!is.null(t0)) {
     t0_index <- match(t0, time_vals)
     if (is.na(t0_index)) {
-      if (is.numeric(t0) && length(t0) == 1 && t0 >= 1 && t0 <= length(time_vals)) {
+      if (
+        is.numeric(t0) && length(t0) == 1 && t0 >= 1 && t0 <= length(time_vals)
+      ) {
         t0_index <- as.integer(round(t0))
       } else {
-        stop("t0 must be a time value present in data$time, or an integer index in [1, T]", call. = FALSE)
+        stop(
+          "t0 must be a time value present in data$time, or an integer index in [1, T]",
+          call. = FALSE
+        )
       }
     }
   }
@@ -295,7 +368,11 @@ vrc_index <- function(
     t0 = t0_index
   )
 
-  list(data = df, meta = meta)
+  list(
+    data = df,
+    data_miss = if (exists("df_miss")) df_miss else data.frame(),
+    meta = meta
+  )
 }
 
 #' Diagnose VR reporting artefacts
@@ -355,28 +432,27 @@ vrc_diagnose_reporting <- function(
   }
 
   # Summaries
-  totals_time <- dplyr::summarise(
-    dplyr::group_by(df, .data$time_id),
-    time = dplyr::first(.data$time),
-    total_y = sum(.data[[y_col]], na.rm = TRUE),
-    n_cells = dplyr::n(),
-    n_missing = sum(is.na(.data[[y_col]])),
-    .groups = "drop"
-  )
-
-  totals_time_cause <- dplyr::summarise(
-    dplyr::group_by(df, .data$time_id, .data$cause_label),
-    time = dplyr::first(.data$time),
-    total_y = sum(.data[[y_col]], na.rm = TRUE),
-    .groups = "drop"
-  )
-
-  cause_share <- dplyr::ungroup(
-    dplyr::mutate(
-      dplyr::group_by(totals_time_cause, .data$time_id),
-      share = .data$total_y / sum(.data$total_y)
+  totals_time <- df |>
+    dplyr::summarise(
+      time = dplyr::first(.data$time),
+      total_y = sum(.data[[y_col]], na.rm = TRUE),
+      n_cells = dplyr::n(),
+      n_missing = sum(is.na(.data[[y_col]])),
+      .by = "time_id"
     )
-  )
+
+  totals_time_cause <- df |>
+    dplyr::summarise(
+      time = dplyr::first(.data$time),
+      total_y = sum(.data[[y_col]], na.rm = TRUE),
+      .by = c("time_id", "cause_label")
+    )
+
+  cause_share <- totals_time_cause |>
+    dplyr::mutate(
+      share = .data$total_y / sum(.data$total_y),
+      .by = "time_id"
+    )
 
   # Pre vs post age composition (all causes)
   if (!is.na(meta$t0)) {
@@ -385,22 +461,21 @@ vrc_diagnose_reporting <- function(
     df$post <- NA_integer_
   }
 
-  age_comp <- dplyr::ungroup(
+  age_comp <- df |>
+    dplyr::summarise(
+      total_y = sum(.data[[y_col]], na.rm = TRUE),
+      .by = c("post", "age")
+    ) |>
     dplyr::mutate(
-      dplyr::group_by(
-        dplyr::summarise(
-          dplyr::group_by(df, .data$post, .data$age),
-          total_y = sum(.data[[y_col]], na.rm = TRUE),
-          .groups = "drop"
-        ),
-        .data$post
-      ),
-      share = .data$total_y / sum(.data$total_y)
+      share = .data$total_y / sum(.data$total_y),
+      .by = "post"
     )
-  )
 
   # Plots
-  p_total <- ggplot2::ggplot(totals_time, ggplot2::aes(x = .data$time_id, y = .data$total_y)) +
+  p_total <- ggplot2::ggplot(
+    totals_time,
+    ggplot2::aes(x = .data$time_id, y = .data$total_y)
+  ) +
     ggplot2::geom_line() +
     ggplot2::labs(x = "Time", y = "Total VR deaths") +
     ggplot2::theme_minimal()
@@ -409,31 +484,50 @@ vrc_diagnose_reporting <- function(
     p_total <- p_total + ggplot2::geom_vline(xintercept = meta$t0, linetype = 2)
   }
 
-  p_by_cause <- ggplot2::ggplot(totals_time_cause, ggplot2::aes(x = .data$time_id, y = .data$total_y, colour = .data$cause_label)) +
+  p_by_cause <- ggplot2::ggplot(
+    totals_time_cause,
+    ggplot2::aes(
+      x = .data$time_id,
+      y = .data$total_y,
+      colour = .data$cause_label
+    )
+  ) +
     ggplot2::geom_line() +
     ggplot2::labs(x = "Time", y = "VR deaths", colour = NULL) +
     ggplot2::theme_minimal()
 
   if (!is.na(meta$t0)) {
-    p_by_cause <- p_by_cause + ggplot2::geom_vline(xintercept = meta$t0, linetype = 2)
+    p_by_cause <- p_by_cause +
+      ggplot2::geom_vline(xintercept = meta$t0, linetype = 2)
   }
 
-  p_cause_share <- ggplot2::ggplot(cause_share, ggplot2::aes(x = .data$time_id, y = .data$share, colour = .data$cause_label)) +
+  p_cause_share <- ggplot2::ggplot(
+    cause_share,
+    ggplot2::aes(x = .data$time_id, y = .data$share, colour = .data$cause_label)
+  ) +
     ggplot2::geom_line() +
     ggplot2::labs(x = "Time", y = "Cause share", colour = NULL) +
     ggplot2::theme_minimal()
 
   if (!is.na(meta$t0)) {
-    p_cause_share <- p_cause_share + ggplot2::geom_vline(xintercept = meta$t0, linetype = 2)
+    p_cause_share <- p_cause_share +
+      ggplot2::geom_vline(xintercept = meta$t0, linetype = 2)
   }
 
-  p_age_prepost <- ggplot2::ggplot(age_comp, ggplot2::aes(x = .data$age, y = .data$share, group = factor(.data$post))) +
+  p_age_prepost <- ggplot2::ggplot(
+    age_comp,
+    ggplot2::aes(x = .data$age, y = .data$share, group = factor(.data$post))
+  ) +
     ggplot2::geom_line() +
     ggplot2::labs(x = "Age group", y = "Share of deaths", colour = NULL) +
     ggplot2::theme_minimal()
 
   if (!is.na(meta$t0)) {
-    p_age_prepost <- p_age_prepost + ggplot2::facet_wrap(~ post, labeller = ggplot2::labeller(post = c(`0` = "Pre", `1` = "Post")))
+    p_age_prepost <- p_age_prepost +
+      ggplot2::facet_wrap(
+        ~post,
+        labeller = ggplot2::labeller(post = c(`0` = "Pre", `1` = "Post"))
+      )
   }
 
   list(

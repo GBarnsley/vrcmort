@@ -27,6 +27,9 @@
 #'   fitting.
 #' @param duplicates How to handle duplicate identifier rows. One of
 #'   `"error"` (default) or `"sum"`.
+#' @param use_mar_labels Logical. If TRUE, account for missing region labels
+#'   using a Missing At Random (MAR) assumption with a labeling probability
+#'   `omega`. If FALSE (default), rows with missing region labels are ignored.
 #' @param algorithm One of `"sampling"`, `"meanfield"`, or `"fullrank"` (passed to `rstan`).
 #' @param priors Optional prior specification created by [vrc_priors()]. If
 #'   `NULL` (default), uses [vrc_priors()] with package defaults.
@@ -50,6 +53,7 @@ vrc_fit <- function(
   scale_binary = FALSE,
   drop_na_y = TRUE,
   duplicates = c("error", "sum"),
+  use_mar_labels = FALSE,
   algorithm = c("sampling", "meanfield", "fullrank"),
   priors = NULL,
   prior_PD = FALSE,
@@ -79,6 +83,7 @@ vrc_fit <- function(
     scale_binary = scale_binary,
     drop_na_y = drop_na_y,
     duplicates = duplicates,
+    use_mar_labels = use_mar_labels,
     priors = priors,
     prior_PD = prior_PD
   )
@@ -102,7 +107,9 @@ vrc_fit <- function(
   }
 
   # default init_r helps avoid extreme initialisation
-  if (is.null(dots$init_r)) dots$init_r <- 1e-6
+  if (is.null(dots$init_r)) {
+    dots$init_r <- 1e-6
+  }
 
   args <- c(
     dots,
@@ -143,16 +150,35 @@ vrc_fit <- function(
 print.vrcfit <- function(x, ...) {
   cat("vrcmort model fit\n")
   cat("- Stan model:", x$stan_model, "\n")
-  if (!is.null(x$stan_file)) cat("- Stan file:", x$stan_file, "\n")
+  if (!is.null(x$stan_file)) {
+    cat("- Stan file:", x$stan_file, "\n")
+  }
   cat("- Algorithm:", x$algorithm, "\n")
-  cat("- N (observed cells):", x$standata$N, "\n")
-  cat("- Dimensions: R=", x$standata$R, ", T=", x$standata$T, ", A=", x$standata$A,
-      ", S=", x$standata$S, ", G=", x$standata$G, "\n", sep = "")
+  cat("- N (observed groups):", x$standata$N, "\n")
+  cat("- N (observed cells):", x$standata$N * x$standata$R, "\n")
+  cat(
+    "- Dimensions: R=",
+    x$standata$R,
+    ", T=",
+    x$standata$T,
+    ", A=",
+    x$standata$A,
+    ", S=",
+    x$standata$S,
+    ", G=",
+    x$standata$G,
+    "\n",
+    sep = ""
+  )
   invisible(x)
 }
 
 #' @export
-summary.vrcfit <- function(object, pars = c("beta_conf", "kappa0", "kappa_post", "gamma_conf", "phi"), ...) {
+summary.vrcfit <- function(
+  object,
+  pars = c("beta_conf", "kappa0", "kappa_post", "gamma_conf", "phi"),
+  ...
+) {
   if (!requireNamespace("rstan", quietly = TRUE)) {
     stop("Package 'rstan' is required", call. = FALSE)
   }

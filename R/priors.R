@@ -28,15 +28,26 @@ NULL
 #' @return A prior specification list.
 #' @export
 normal <- function(location = 0, scale = 1, autoscale = FALSE) {
-  if (!is.numeric(location)) stop("location must be numeric", call. = FALSE)
-  if (!is.numeric(scale)) stop("scale must be numeric", call. = FALSE)
-  if (any(is.na(scale)) || any(scale <= 0)) stop("scale must be > 0", call. = FALSE)
+  if (!is.numeric(location)) {
+    stop("location must be numeric", call. = FALSE)
+  }
+  if (!is.numeric(scale)) {
+    stop("scale must be numeric", call. = FALSE)
+  }
+  if (any(is.na(scale)) || any(scale <= 0)) {
+    stop("scale must be > 0", call. = FALSE)
+  }
   if (!is.logical(autoscale) || length(autoscale) != 1) {
     stop("autoscale must be TRUE or FALSE", call. = FALSE)
   }
 
   structure(
-    list(dist = "normal", location = location, scale = scale, autoscale = autoscale),
+    list(
+      dist = "normal",
+      location = location,
+      scale = scale,
+      autoscale = autoscale
+    ),
     class = "vrc_prior"
   )
 }
@@ -48,10 +59,35 @@ normal <- function(location = 0, scale = 1, autoscale = FALSE) {
 #' @return A prior specification list.
 #' @export
 exponential <- function(rate = 1) {
-  if (!is.numeric(rate)) stop("rate must be numeric", call. = FALSE)
-  if (any(is.na(rate)) || any(rate <= 0)) stop("rate must be > 0", call. = FALSE)
+  if (!is.numeric(rate)) {
+    stop("rate must be numeric", call. = FALSE)
+  }
+  if (any(is.na(rate)) || any(rate <= 0)) {
+    stop("rate must be > 0", call. = FALSE)
+  }
 
   structure(list(dist = "exponential", rate = rate), class = "vrc_prior")
+}
+
+#' Beta prior
+#'
+#' @param shape1 First shape parameter (alpha) (> 0).
+#' @param shape2 Second shape parameter (beta) (> 0).
+#'
+#' @return A prior specification list.
+#' @export
+beta <- function(shape1 = 1, shape2 = 1) {
+  if (!is.numeric(shape1) || any(is.na(shape1)) || any(shape1 <= 0)) {
+    stop("shape1 must be numeric and > 0", call. = FALSE)
+  }
+  if (!is.numeric(shape2) || any(is.na(shape2)) || any(shape2 <= 0)) {
+    stop("shape2 must be numeric and > 0", call. = FALSE)
+  }
+
+  structure(
+    list(dist = "beta", shape1 = shape1, shape2 = shape2),
+    class = "vrc_prior"
+  )
 }
 
 #' Create a bundled prior specification for vrcmort models
@@ -86,6 +122,7 @@ exponential <- function(rate = 1) {
 #' @param delta_age_incr Prior scale for increments in the monotone age penalty.
 #' @param delta_age_scale Prior scale for the overall monotone age penalty scale.
 #' @param phi Prior for the NB2 dispersion parameter.
+#' @param omega Prior for the labeling probability (MAR).
 #'
 #' @return A list of class `vrc_priors`.
 #' @export
@@ -109,13 +146,20 @@ vrc_priors <- function(
   sigma_v_rho_region = normal(0, 0.2, autoscale = FALSE),
   delta_age_incr = normal(0, 0.5, autoscale = FALSE),
   delta_age_scale = normal(0, 1, autoscale = FALSE),
-  phi = exponential(1)
+  phi = exponential(1),
+  omega = beta(5, 2)
 ) {
   # basic checks
   .check_prior_or_null <- function(p, nm) {
-    if (is.null(p)) return(invisible(TRUE))
+    if (is.null(p)) {
+      return(invisible(TRUE))
+    }
     if (!is.list(p) || is.null(p$dist)) {
-      stop(nm, " must be a prior created by normal() or exponential()", call. = FALSE)
+      stop(
+        nm,
+        " must be a prior created by normal() or exponential()",
+        call. = FALSE
+      )
     }
     invisible(TRUE)
   }
@@ -140,6 +184,7 @@ vrc_priors <- function(
   .check_prior_or_null(delta_age_incr, "delta_age_incr")
   .check_prior_or_null(delta_age_scale, "delta_age_scale")
   .check_prior_or_null(phi, "phi")
+  .check_prior_or_null(omega, "omega")
 
   structure(
     list(
@@ -162,7 +207,8 @@ vrc_priors <- function(
       sigma_v_rho_region = sigma_v_rho_region,
       delta_age_incr = delta_age_incr,
       delta_age_scale = delta_age_scale,
-      phi = phi
+      phi = phi,
+      omega = omega
     ),
     class = "vrc_priors"
   )
@@ -177,15 +223,21 @@ vrc_is_prior <- function(x) {
 
 #' @keywords internal
 vrc_broadcast <- function(x, n, name = "value") {
-  if (length(x) == n) return(x)
-  if (length(x) == 1) return(rep(x, n))
+  if (length(x) == n) {
+    return(x)
+  }
+  if (length(x) == 1) {
+    return(rep(x, n))
+  }
   stop(name, " must have length 1 or ", n, call. = FALSE)
 }
 
 #' @keywords internal
 vrc_col_scale_for_prior <- function(X) {
   X <- as.matrix(X)
-  if (ncol(X) == 0) return(numeric())
+  if (ncol(X) == 0) {
+    return(numeric())
+  }
   out <- numeric(ncol(X))
   for (j in seq_len(ncol(X))) {
     x <- X[, j]
@@ -204,35 +256,62 @@ vrc_col_scale_for_prior <- function(X) {
 #'
 #' @keywords internal
 vrc_resolve_priors <- function(priors, G, K_mort, K_rep, X_mort, X_rep) {
-  if (is.null(priors)) priors <- vrc_priors()
+  if (is.null(priors)) {
+    priors <- vrc_priors()
+  }
   if (!inherits(priors, "vrc_priors")) {
     stop("priors must be created by vrc_priors()", call. = FALSE)
   }
 
   # helpers
-  get_loc_scale <- function(p, n, default_loc = 0, default_scale = 1, autoscale = FALSE, x_scale = NULL) {
+  get_loc_scale <- function(
+    p,
+    n,
+    default_loc = 0,
+    default_scale = 1,
+    autoscale = FALSE,
+    x_scale = NULL
+  ) {
     if (is.null(p)) {
       loc <- rep(default_loc, n)
       sc <- rep(default_scale, n)
-      return(list(loc = loc, scale = sc))
+      return(list(loc = as_stan_array(loc), scale = as_stan_array(sc)))
     }
     if (!vrc_is_prior(p) || p$dist != "normal") {
-      stop("Only normal() priors are supported for this parameter", call. = FALSE)
+      stop(
+        "Only normal() priors are supported for this parameter",
+        call. = FALSE
+      )
     }
     loc <- vrc_broadcast(as.numeric(p$location), n, "prior location")
     sc <- vrc_broadcast(as.numeric(p$scale), n, "prior scale")
     if (isTRUE(p$autoscale) && !is.null(x_scale)) {
       sc <- sc / x_scale
     }
-    list(loc = loc, scale = sc)
+    list(loc = as_stan_array(loc), scale = as_stan_array(sc))
   }
 
   get_rate <- function(p, n, default_rate = 1) {
-    if (is.null(p)) return(vrc_broadcast(default_rate, n, "prior rate"))
-    if (!vrc_is_prior(p) || p$dist != "exponential") {
-      stop("Only exponential() priors are supported for this parameter", call. = FALSE)
+    if (is.null(p)) {
+      return(as_stan_array(vrc_broadcast(default_rate, n, "prior rate")))
     }
-    vrc_broadcast(as.numeric(p$rate), n, "prior rate")
+    if (!vrc_is_prior(p) || p$dist != "exponential") {
+      stop(
+        "Only exponential() priors are supported for this parameter",
+        call. = FALSE
+      )
+    }
+    as_stan_array(vrc_broadcast(as.numeric(p$rate), n, "prior rate"))
+  }
+
+  get_beta <- function(p, default_a = 1, default_b = 1) {
+    if (is.null(p)) {
+      return(list(a = default_a, b = default_b))
+    }
+    if (!vrc_is_prior(p) || p$dist != "beta") {
+      stop("Only beta() priors are supported for this parameter", call. = FALSE)
+    }
+    list(a = as.numeric(p$shape1), b = as.numeric(p$shape2))
   }
 
   # Covariate prior autoscaling (uses the matrix passed to Stan)
@@ -243,45 +322,134 @@ vrc_resolve_priors <- function(priors, G, K_mort, K_rep, X_mort, X_rep) {
   a0 <- get_loc_scale(priors$alpha0, G, default_loc = -9, default_scale = 2)
 
   # conflict effects
-  bc <- get_loc_scale(priors$beta_conf, G, default_loc = 0.2, default_scale = 0.3)
-  gc <- get_loc_scale(priors$gamma_conf, G, default_loc = 0, default_scale = 0.5)
+  bc <- get_loc_scale(
+    priors$beta_conf,
+    G,
+    default_loc = 0.2,
+    default_scale = 0.3
+  )
+  gc <- get_loc_scale(
+    priors$gamma_conf,
+    G,
+    default_loc = 0,
+    default_scale = 0.5
+  )
 
   # additional covariate effects
-  bm <- get_loc_scale(priors$beta_mort, K_mort, default_loc = 0, default_scale = 0.3, x_scale = x_mort_scale)
-  gr <- get_loc_scale(priors$gamma_rep, K_rep, default_loc = 0, default_scale = 0.5, x_scale = x_rep_scale)
+  bm <- get_loc_scale(
+    priors$beta_mort,
+    K_mort,
+    default_loc = 0,
+    default_scale = 0.3,
+    x_scale = x_mort_scale
+  )
+  gr <- get_loc_scale(
+    priors$gamma_rep,
+    K_rep,
+    default_loc = 0,
+    default_scale = 0.5,
+    x_scale = x_rep_scale
+  )
 
   # reporting anchors
   if (is.null(priors$kappa0)) {
     # mimic earlier hard-coded defaults
     k_loc <- rep(stats::qlogis(0.85), G)
     k_sc <- rep(0.6, G)
-    if (G >= 1) { k_loc[1] <- stats::qlogis(0.70); k_sc[1] <- 0.7 }
-    if (G >= 2) { k_loc[2] <- stats::qlogis(0.90); k_sc[2] <- 0.4 }
-    k0 <- list(loc = k_loc, scale = k_sc)
+    if (G >= 1) {
+      k_loc[1] <- stats::qlogis(0.70)
+      k_sc[1] <- 0.7
+    }
+    if (G >= 2) {
+      k_loc[2] <- stats::qlogis(0.90)
+      k_sc[2] <- 0.4
+    }
+    k0 <- list(loc = as_stan_array(k_loc), scale = as_stan_array(k_sc))
   } else {
     k0 <- get_loc_scale(priors$kappa0, G)
   }
-  kp <- get_loc_scale(priors$kappa_post, G, default_loc = 0, default_scale = 0.7)
+  kp <- get_loc_scale(
+    priors$kappa_post,
+    G,
+    default_loc = 0,
+    default_scale = 0.7
+  )
 
   # fixed-effect scales for age/sex (mortality)
   aa <- get_loc_scale(priors$alpha_age, 1, default_loc = 0, default_scale = 1)
-  asx <- get_loc_scale(priors$alpha_sex, 1, default_loc = 0, default_scale = 0.5)
+  asx <- get_loc_scale(
+    priors$alpha_sex,
+    1,
+    default_loc = 0,
+    default_scale = 0.5
+  )
 
   # half-normal scales for hierarchical SDs
-  suL <- get_loc_scale(priors$sigma_u_lambda, G, default_loc = 0, default_scale = 0.5)
-  svL <- get_loc_scale(priors$sigma_v_lambda, G, default_loc = 0, default_scale = 0.2)
-  sbc <- get_loc_scale(priors$sigma_beta_conf, G, default_loc = 0, default_scale = 0.3)
-  svLr <- get_loc_scale(priors$sigma_v_lambda_region, G, default_loc = 0, default_scale = 0.2)
+  suL <- get_loc_scale(
+    priors$sigma_u_lambda,
+    G,
+    default_loc = 0,
+    default_scale = 0.5
+  )
+  svL <- get_loc_scale(
+    priors$sigma_v_lambda,
+    G,
+    default_loc = 0,
+    default_scale = 0.2
+  )
+  sbc <- get_loc_scale(
+    priors$sigma_beta_conf,
+    G,
+    default_loc = 0,
+    default_scale = 0.3
+  )
+  svLr <- get_loc_scale(
+    priors$sigma_v_lambda_region,
+    G,
+    default_loc = 0,
+    default_scale = 0.2
+  )
 
-  suR <- get_loc_scale(priors$sigma_u_rho, G, default_loc = 0, default_scale = 0.5)
-  svR <- get_loc_scale(priors$sigma_v_rho, G, default_loc = 0, default_scale = 0.2)
-  sgc <- get_loc_scale(priors$sigma_gamma_conf, G, default_loc = 0, default_scale = 0.5)
-  svRr <- get_loc_scale(priors$sigma_v_rho_region, G, default_loc = 0, default_scale = 0.2)
+  suR <- get_loc_scale(
+    priors$sigma_u_rho,
+    G,
+    default_loc = 0,
+    default_scale = 0.5
+  )
+  svR <- get_loc_scale(
+    priors$sigma_v_rho,
+    G,
+    default_loc = 0,
+    default_scale = 0.2
+  )
+  sgc <- get_loc_scale(
+    priors$sigma_gamma_conf,
+    G,
+    default_loc = 0,
+    default_scale = 0.5
+  )
+  svRr <- get_loc_scale(
+    priors$sigma_v_rho_region,
+    G,
+    default_loc = 0,
+    default_scale = 0.2
+  )
 
-  da_incr <- get_loc_scale(priors$delta_age_incr, 1, default_loc = 0, default_scale = 0.5)
-  da_scale <- get_loc_scale(priors$delta_age_scale, 1, default_loc = 0, default_scale = 1)
+  da_incr <- get_loc_scale(
+    priors$delta_age_incr,
+    1,
+    default_loc = 0,
+    default_scale = 0.5
+  )
+  da_scale <- get_loc_scale(
+    priors$delta_age_scale,
+    1,
+    default_loc = 0,
+    default_scale = 1
+  )
 
   phi_rate <- get_rate(priors$phi, G, default_rate = 1)
+  om <- get_beta(priors$omega, default_a = 5, default_b = 2)
 
   list(
     prior_alpha0_loc = a0$loc,
@@ -310,7 +478,9 @@ vrc_resolve_priors <- function(priors, G, K_mort, K_rep, X_mort, X_rep) {
     prior_sigma_v_rho_region_scale = svRr$scale,
     prior_delta_age_incr_scale = da_incr$scale[1],
     prior_delta_age_scale_scale = da_scale$scale[1],
-    prior_phi_rate = phi_rate
+    prior_phi_rate = phi_rate,
+    prior_omega_a = om$a,
+    prior_omega_b = om$b
   )
 }
 
@@ -336,35 +506,23 @@ vrc_prior_summary <- function(x) {
     data.frame(name = name, value = I(list(value)), stringsAsFactors = FALSE)
   }
 
-  out <- rbind(
-    mk("alpha0_loc", pri$prior_alpha0_loc),
-    mk("alpha0_scale", pri$prior_alpha0_scale),
-    mk("alpha_age_scale", pri$prior_alpha_age_scale),
-    mk("alpha_sex_scale", pri$prior_alpha_sex_scale),
-    mk("beta_conf_loc", pri$prior_beta_conf_loc),
-    mk("beta_conf_scale", pri$prior_beta_conf_scale),
-    mk("beta_mort_loc", pri$prior_beta_mort_loc),
-    mk("beta_mort_scale", pri$prior_beta_mort_scale),
-    mk("sigma_u_lambda_scale", pri$prior_sigma_u_lambda_scale),
-    mk("sigma_v_lambda_scale", pri$prior_sigma_v_lambda_scale),
-    mk("sigma_beta_conf_scale", pri$prior_sigma_beta_conf_scale),
-    mk("sigma_v_lambda_region_scale", pri$prior_sigma_v_lambda_region_scale),
-    mk("kappa0_loc", pri$prior_kappa0_loc),
-    mk("kappa0_scale", pri$prior_kappa0_scale),
-    mk("kappa_post_loc", pri$prior_kappa_post_loc),
-    mk("kappa_post_scale", pri$prior_kappa_post_scale),
-    mk("gamma_conf_loc", pri$prior_gamma_conf_loc),
-    mk("gamma_conf_scale", pri$prior_gamma_conf_scale),
-    mk("gamma_rep_loc", pri$prior_gamma_rep_loc),
-    mk("gamma_rep_scale", pri$prior_gamma_rep_scale),
-    mk("sigma_u_rho_scale", pri$prior_sigma_u_rho_scale),
-    mk("sigma_v_rho_scale", pri$prior_sigma_v_rho_scale),
-    mk("sigma_gamma_conf_scale", pri$prior_sigma_gamma_conf_scale),
-    mk("sigma_v_rho_region_scale", pri$prior_sigma_v_rho_region_scale),
-    mk("delta_age_incr_scale", pri$prior_delta_age_incr_scale),
-    mk("delta_age_scale_scale", pri$prior_delta_age_scale_scale),
-    mk("phi_rate", pri$prior_phi_rate)
+  prior_names <- c(
+    "alpha0_loc", "alpha0_scale", "alpha_age_scale", "alpha_sex_scale",
+    "beta_conf_loc", "beta_conf_scale", "beta_mort_loc", "beta_mort_scale",
+    "sigma_u_lambda_scale", "sigma_v_lambda_scale", "sigma_beta_conf_scale",
+    "sigma_v_lambda_region_scale", "kappa0_loc", "kappa0_scale",
+    "kappa_post_loc", "kappa_post_scale", "gamma_conf_loc", "gamma_conf_scale",
+    "gamma_rep_loc", "gamma_rep_scale", "sigma_u_rho_scale", "sigma_v_rho_scale",
+    "sigma_gamma_conf_scale", "sigma_v_rho_region_scale", "delta_age_incr_scale",
+    "delta_age_scale_scale", "phi_rate", "omega_a", "omega_b"
   )
 
-  out
+  # Map over names to build summary rows
+  rows <- prior_names |>
+    lapply(\(nm) {
+      val_name <- paste0("prior_", nm)
+      mk(nm, pri[[val_name]])
+    })
+
+  rows |> do.call(what = rbind)
 }

@@ -30,43 +30,75 @@ plot_reporting <- function(
     stop("Package 'dplyr' is required", call. = FALSE)
   }
 
-  df <- posterior_reporting(x, draws = FALSE, probs = c(min(probs), 0.5, max(probs)))
+  df <- posterior_reporting(
+    x,
+    draws = FALSE,
+    probs = c(min(probs), 0.5, max(probs))
+  )
 
   qlo <- paste0("rho_q", gsub("\\.", "", format(min(probs), trim = TRUE)))
   qhi <- paste0("rho_q", gsub("\\.", "", format(max(probs), trim = TRUE)))
 
   if (!all(c(qlo, qhi) %in% names(df))) {
-    stop("Quantile columns not found. Try calling with probs that match posterior_reporting().", call. = FALSE)
+    stop(
+      "Quantile columns not found. Try calling with probs that match posterior_reporting().",
+      call. = FALSE
+    )
   }
 
   gvars <- unique(c("time", group_vars))
 
-  df_ag <- dplyr::group_by(df, !!!rlang::syms(gvars))
-  df_ag <- dplyr::summarise(
-    df_ag,
-    w = sum(.data[[weight_var]], na.rm = TRUE),
-    rho_mean = stats::weighted.mean(.data$rho_mean, w = .data[[weight_var]], na.rm = TRUE),
-    rho_lo = stats::weighted.mean(.data[[qlo]], w = .data[[weight_var]], na.rm = TRUE),
-    rho_hi = stats::weighted.mean(.data[[qhi]], w = .data[[weight_var]], na.rm = TRUE),
-    .groups = "drop"
-  )
+  df_ag <- df |>
+    dplyr::summarise(
+      w = sum(.data[[weight_var]], na.rm = TRUE),
+      rho_mean = stats::weighted.mean(
+        .data$rho_mean,
+        w = .data[[weight_var]],
+        na.rm = TRUE
+      ),
+      rho_lo = stats::weighted.mean(
+        .data[[qlo]],
+        w = .data[[weight_var]],
+        na.rm = TRUE
+      ),
+      rho_hi = stats::weighted.mean(
+        .data[[qhi]],
+        w = .data[[weight_var]],
+        na.rm = TRUE
+      ),
+      .by = dplyr::all_of(gvars)
+    )
 
   p <- ggplot2::ggplot(df_ag, ggplot2::aes(x = .data$time, y = .data$rho_mean))
 
   if (length(group_vars) >= 1) {
-    p <- p + ggplot2::aes(colour = interaction(!!!rlang::syms(group_vars), sep = " / "))
+    p <- p +
+      ggplot2::aes(
+        colour = interaction(!!!rlang::syms(group_vars), sep = " / ")
+      )
   }
 
   if (isTRUE(ribbon)) {
-    p <- p + ggplot2::geom_ribbon(
-      ggplot2::aes(ymin = .data$rho_lo, ymax = .data$rho_hi, fill = interaction(!!!rlang::syms(group_vars), sep = " / ")),
-      alpha = 0.2,
-      colour = NA
-    )
+    p <- p +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(
+          ymin = .data$rho_lo,
+          ymax = .data$rho_hi,
+          fill = interaction(!!!rlang::syms(group_vars), sep = " / ")
+        ),
+        alpha = 0.2,
+        colour = NA
+      )
   }
 
-  p <- p + ggplot2::geom_line() +
-    ggplot2::labs(x = "Time", y = "Reporting completeness (rho)", colour = NULL, fill = NULL) +
+  p <- p +
+    ggplot2::geom_line() +
+    ggplot2::labs(
+      x = "Time",
+      y = "Reporting completeness (rho)",
+      colour = NULL,
+      fill = NULL
+    ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(...)
 
@@ -112,30 +144,36 @@ plot_mortality <- function(
   gvars <- unique(c("time", group_vars))
 
   if (value == "true_deaths") {
-    df_ag <- dplyr::group_by(df, !!!rlang::syms(gvars))
-    df_ag <- dplyr::summarise(
-      df_ag,
-      value = sum(.data$true_deaths_mean, na.rm = TRUE),
-      .groups = "drop"
-    )
+    df_ag <- df |>
+      dplyr::summarise(
+        value = sum(.data$true_deaths_mean, na.rm = TRUE),
+        .by = dplyr::all_of(gvars)
+      )
     ylab <- "Expected true deaths"
   } else {
     # exposure-weighted mean rate
-    df_ag <- dplyr::group_by(df, !!!rlang::syms(gvars))
-    df_ag <- dplyr::summarise(
-      df_ag,
-      value = stats::weighted.mean(.data$lambda_mean, w = .data$exposure, na.rm = TRUE),
-      .groups = "drop"
-    )
+    df_ag <- df |>
+      dplyr::summarise(
+        value = stats::weighted.mean(
+          .data$lambda_mean,
+          w = .data$exposure,
+          na.rm = TRUE
+        ),
+        .by = dplyr::all_of(gvars)
+      )
     ylab <- "Latent mortality rate (lambda)"
   }
 
   p <- ggplot2::ggplot(df_ag, ggplot2::aes(x = .data$time, y = .data$value))
   if (length(group_vars) >= 1) {
-    p <- p + ggplot2::aes(colour = interaction(!!!rlang::syms(group_vars), sep = " / "))
+    p <- p +
+      ggplot2::aes(
+        colour = interaction(!!!rlang::syms(group_vars), sep = " / ")
+      )
   }
 
-  p <- p + ggplot2::geom_line() +
+  p <- p +
+    ggplot2::geom_line() +
     ggplot2::labs(x = "Time", y = ylab, colour = NULL) +
     ggplot2::theme_minimal() +
     ggplot2::theme(...)
