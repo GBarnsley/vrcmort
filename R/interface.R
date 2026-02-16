@@ -3,39 +3,23 @@
 #' Mortality model component specification
 #'
 #' @description
-#' Create a mortality component specification for [vrcm()]. This is a light
-#' wrapper around a formula describing additional mortality covariates (beyond
-#' the always-included conflict proxy).
+#' Create a mortality component specification for [vrcm()].
 #'
-#' The formula should not include `conflict`; conflict is included in the core
-#' Stan model as `beta_conf`.
+#' @param formula A model formula for additional mortality covariates.
+#' @param monotonic Optional character vector of level column names to treat as monotonic.
+#' @param conflict How to model conflict in mortality ("fixed" or "region").
+#' @param time How to model time in mortality ("national" or "region").
 #'
-#' @param formula A model formula. The default `~ 1` specifies no additional
-#'   covariates.
-#' @param conflict How to model the conflict effect in the mortality component.
-#'   Use `"fixed"` for one effect shared across regions (per cause), or
-#'   `"region"` for partial pooling (random slopes) by region (per cause).
-#' @param time How to model time variation in the mortality component.
-#'   `"national"` uses a single random walk shared across regions (per cause).
-#'   `"region"` adds region-specific random walk deviations around the national
-#'   trend.
-#'
-#' @return An object of class `vrc_mortality`.
 #' @export
 vrc_mortality <- function(
   formula = ~1,
+  monotonic = NULL,
   conflict = c("fixed", "region"),
   time = c("national", "region")
 ) {
-  if (!inherits(formula, "formula")) {
-    stop("formula must be a formula", call. = FALSE)
-  }
-
-  conflict <- match.arg(conflict)
-  time <- match.arg(time)
-
+  if (!inherits(formula, "formula")) stop("formula must be a formula")
   structure(
-    list(formula = formula, conflict = conflict, time = time),
+    list(formula = formula, monotonic = monotonic, conflict = match.arg(conflict), time = match.arg(time)),
     class = "vrc_mortality"
   )
 }
@@ -43,70 +27,37 @@ vrc_mortality <- function(
 #' Reporting model component specification
 #'
 #' @description
-#' Create a reporting component specification for [vrcm()]. This is a light
-#' wrapper around a formula describing additional reporting covariates (beyond
-#' the always-included conflict proxy).
+#' Create a reporting component specification for [vrcm()].
 #'
-#' The formula should not include `conflict`; conflict is included in the core
-#' Stan model as `gamma_conf`.
+#' @param formula A model formula for additional reporting covariates.
+#' @param monotonic Optional character vector of level column names to treat as monotonic.
+#' @param conflict How to model conflict in reporting ("fixed" or "region").
+#' @param time How to model time in reporting ("national" or "region").
 #'
-#' @param formula A model formula. The default `~ 1` specifies no additional
-#'   covariates.
-#' @param conflict How to model the conflict effect in the reporting component.
-#'   Use `"fixed"` for one effect shared across regions (per cause), or
-#'   `"region"` for partial pooling (random slopes) by region (per cause).
-#' @param time How to model time variation in the reporting component.
-#'   `"national"` uses a single random walk shared across regions (per cause).
-#'   `"region"` adds region-specific random walk deviations around the national
-#'   trend.
-#'
-#' @return An object of class `vrc_reporting`.
 #' @export
 vrc_reporting <- function(
   formula = ~1,
+  monotonic = NULL,
   conflict = c("fixed", "region"),
   time = c("national", "region")
 ) {
-  if (!inherits(formula, "formula")) {
-    stop("formula must be a formula", call. = FALSE)
-  }
-
-  conflict <- match.arg(conflict)
-  time <- match.arg(time)
-
+  if (!inherits(formula, "formula")) stop("formula must be a formula")
   structure(
-    list(formula = formula, conflict = conflict, time = time),
+    list(formula = formula, monotonic = monotonic, conflict = match.arg(conflict), time = match.arg(time)),
     class = "vrc_reporting"
   )
 }
 
 #' Fit a VR mortality + reporting model
 #'
-#' @description
-#' High-level wrapper around [vrc_fit()] modelled after the user experience of
-#' packages like `epidemia` and `rstanarm`. You specify a mortality component and a reporting
-#' component, and `vrcm()` handles data preparation and model fitting.
+#' @param mortality A [vrc_mortality()] specification.
+#' @param reporting A [vrc_reporting()] specification.
+#' @param data A data.frame in canonical VR long format.
+#' @param t0 Conflict start time.
+#' @param use_mar_labels Logical.
+#' @param priors Optional vrc_priors object.
+#' @param ... Passed to [vrc_fit()].
 #'
-#' The fitted model separates:
-#'
-#' - a latent mortality process (`lambda`), and
-#' - a reporting completeness process (`rho`).
-#'
-#' Both processes include a conflict proxy by default.
-#'
-#' @param mortality A [vrc_mortality()] specification, or a formula.
-#' @param reporting A [vrc_reporting()] specification, or a formula.
-#' @param data A data.frame in canonical VR long format (see [vrc_standata()]).
-#' @param t0 Conflict start time (index or a value in `data$time`).
-#' @param use_mar_labels Logical. If TRUE, account for missing region labels
-#'   using a Missing At Random (MAR) assumption with a labeling probability
-#'   `omega`. If FALSE (default), rows with missing region labels are ignored.
-#' @param priors Optional prior specification created by [vrc_priors()]. If
-#'   `NULL` (default), uses [vrc_priors()] with package defaults.
-#' @param ... Passed through to [vrc_fit()].
-#'
-#' @return A `vrcfit` object, or (if `chains = 0`) a standata bundle returned
-#'   by [vrc_standata()].
 #' @export
 vrcm <- function(
   mortality = vrc_mortality(~1),
@@ -117,25 +68,15 @@ vrcm <- function(
   priors = NULL,
   ...
 ) {
-  if (inherits(mortality, "formula")) {
-    mortality <- vrc_mortality(mortality)
-  }
-  if (inherits(reporting, "formula")) {
-    reporting <- vrc_reporting(reporting)
-  }
-
-  if (!inherits(mortality, "vrc_mortality")) {
-    stop("mortality must be a vrc_mortality object or a formula", call. = FALSE)
-  }
-  if (!inherits(reporting, "vrc_reporting")) {
-    stop("reporting must be a vrc_reporting object or a formula", call. = FALSE)
-  }
+  if (inherits(mortality, "formula")) mortality <- vrc_mortality(mortality)
+  if (inherits(reporting, "formula")) reporting <- vrc_reporting(reporting)
 
   out <- vrc_fit(
-    data = data,
-    t0 = t0,
+    data = data, t0 = t0,
     mortality_covariates = mortality$formula,
     reporting_covariates = reporting$formula,
+    mortality_monotonic = mortality$monotonic,
+    reporting_monotonic = reporting$monotonic,
     mortality_conflict = mortality$conflict,
     reporting_conflict = reporting$conflict,
     mortality_time = mortality$time,
@@ -144,178 +85,96 @@ vrcm <- function(
     priors = priors,
     ...
   )
-
-  # If vrc_fit returned the standata bundle (chains = 0), attach component specs
   out$mortality <- mortality
   out$reporting <- reporting
-
   out
 }
 
 #' Summarise covariate effects
 #'
-#' @description
-#' Convenience helper to extract and summarise covariate effects from a fitted
-#' model, including cause-specific conflict effects and any additional covariate
-#' effects supplied via formulas.
-#'
-#' By default this returns effects on the standardised covariate scale used for
-#' fitting. If `original_scale = TRUE`, coefficients are rescaled back to the
-#' original covariate scale using the centring/scaling information stored in
-#' `fit$scaling`.
-#'
 #' @param x A `vrcfit` object.
 #' @param probs Quantiles to include.
-#' @param original_scale Logical. If TRUE, rescale coefficients back to the
-#'   original covariate scale.
+#' @param original_scale Logical.
 #'
-#' @return A data.frame.
 #' @export
-vrc_coef_summary <- function(
-  x,
-  probs = c(0.1, 0.5, 0.9),
-  original_scale = FALSE
-) {
-  if (!inherits(x, "vrcfit")) {
-    stop("x must be a vrcfit object", call. = FALSE)
-  }
-  if (!requireNamespace("rstan", quietly = TRUE)) {
-    stop("Package 'rstan' is required", call. = FALSE)
-  }
-
+vrc_coef_summary <- function(x, probs = c(0.1, 0.5, 0.9), original_scale = FALSE) {
+  if (!inherits(x, "vrcfit")) stop("x must be a vrcfit object")
+  
   K_mort <- x$standata$K_mort
   K_rep <- x$standata$K_rep
+  K_mono_mort <- x$standata$K_mono_mort
+  K_mono_rep <- x$standata$K_mono_rep
 
   pars <- c("beta_conf", "gamma_conf")
-  if (K_mort > 0) {
-    pars <- c(pars, "beta_mort")
-  }
-  if (K_rep > 0) {
-    pars <- c(pars, "gamma_rep")
-  }
+  if (K_mort > 0) pars <- c(pars, "beta_mort")
+  if (K_rep > 0) pars <- c(pars, "gamma_rep")
+  if (K_mono_mort > 0) pars <- c(pars, "beta_mono_mort_pars")
+  if (K_mono_rep > 0) pars <- c(pars, "beta_mono_rep_pars")
 
   e <- rstan::extract(x$stanfit, pars = pars, permuted = TRUE)
-
   cause_levels <- x$meta$cause_levels
 
-  # helper to summarise a draws matrix (ndraw x npar)
   summarise_mat <- function(mat) {
-    if (is.null(dim(mat))) {
-      mat <- matrix(mat, ncol = 1)
-    }
+    if (is.null(dim(mat))) mat <- matrix(mat, ncol = 1)
     mean_ <- colMeans(mat)
     sd_ <- apply(mat, 2, stats::sd)
     qs <- t(apply(mat, 2, stats::quantile, probs = probs))
     out <- data.frame(mean = mean_, sd = sd_, qs, check.names = FALSE)
-    colnames(out)[-(1:2)] <- paste0(
-      "q",
-      gsub("\\.", "", format(probs, trim = TRUE))
-    )
+    colnames(out)[-(1:2)] <- paste0("q", gsub("\\.", "", format(probs, trim = TRUE)))
     out
   }
-    rows <- list()
 
-  # beta_conf: array[draw, g]
+  rows <- list()
+
   if (!is.null(e$beta_conf)) {
-    mat <- e$beta_conf
-    if (length(dim(mat)) == 1) {
-      mat <- matrix(mat, ncol = 1)
-    }
+    mat <- if (length(dim(e$beta_conf)) == 1) matrix(e$beta_conf, ncol = 1) else e$beta_conf
     sm <- summarise_mat(mat)
-    rows[[length(rows) + 1]] <- data.frame(
-      component = "mortality",
-      parameter = "beta_conf",
-      cause = cause_levels[seq_len(ncol(mat))],
-      term = "conflict",
-      sm,
-      stringsAsFactors = FALSE
-    )
+    rows[[length(rows) + 1]] <- data.frame(component = "mortality", parameter = "beta_conf", cause = cause_levels[seq_len(ncol(mat))], term = "conflict", sm)
   }
 
-  # beta_mort: array[draw, g, k]
   if (K_mort > 0 && !is.null(e$beta_mort)) {
-    arr <- e$beta_mort
     terms <- x$scaling$X_mort$colnames
-    for (g in seq_len(dim(arr)[2])) {
-      mat <- arr[, g, , drop = FALSE]
-      mat <- matrix(mat, ncol = K_mort)
+    for (g in seq_len(dim(e$beta_mort)[2])) {
+      mat <- matrix(e$beta_mort[, g, ], ncol = K_mort)
       sm <- summarise_mat(mat)
-      rows[[length(rows) + 1]] <- data.frame(
-        component = "mortality",
-        parameter = "beta_mort",
-        cause = rep(cause_levels[g], K_mort),
-        term = terms,
-        sm,
-        stringsAsFactors = FALSE
-      )
+      rows[[length(rows) + 1]] <- data.frame(component = "mortality", parameter = "beta_mort", cause = rep(cause_levels[g], K_mort), term = terms, sm)
     }
   }
 
-  # gamma_conf: array[draw, g]
+  if (K_mono_mort > 0 && !is.null(e$beta_mono_mort_pars)) {
+    terms <- x$mortality$monotonic
+    for (g in seq_len(dim(e$beta_mono_mort_pars)[3])) {
+      mat <- matrix(e$beta_mono_mort_pars[, , g], ncol = K_mono_mort)
+      sm <- summarise_mat(mat)
+      rows[[length(rows) + 1]] <- data.frame(component = "mortality", parameter = "beta_mono_mort", cause = rep(cause_levels[g], K_mono_mort), term = terms, sm)
+    }
+  }
+
   if (!is.null(e$gamma_conf)) {
-    mat <- e$gamma_conf
-    if (length(dim(mat)) == 1) {
-      mat <- matrix(mat, ncol = 1)
-    }
+    mat <- if (length(dim(e$gamma_conf)) == 1) matrix(e$gamma_conf, ncol = 1) else e$gamma_conf
     sm <- summarise_mat(mat)
-    rows[[length(rows) + 1]] <- data.frame(
-      component = "reporting",
-      parameter = "gamma_conf",
-      cause = cause_levels[seq_len(ncol(mat))],
-      term = "conflict",
-      sm,
-      stringsAsFactors = FALSE
-    )
+    rows[[length(rows) + 1]] <- data.frame(component = "reporting", parameter = "gamma_conf", cause = cause_levels[seq_len(ncol(mat))], term = "conflict", sm)
   }
 
-  # gamma_rep: array[draw, g, k]
   if (K_rep > 0 && !is.null(e$gamma_rep)) {
-    arr <- e$gamma_rep
     terms <- x$scaling$X_rep$colnames
-    for (g in seq_len(dim(arr)[2])) {
-      mat <- arr[, g, , drop = FALSE]
-      mat <- matrix(mat, ncol = K_rep)
+    for (g in seq_len(dim(e$gamma_rep)[2])) {
+      mat <- matrix(e$gamma_rep[, g, ], ncol = K_rep)
       sm <- summarise_mat(mat)
-      rows[[length(rows) + 1]] <- data.frame(
-        component = "reporting",
-        parameter = "gamma_rep",
-        cause = rep(cause_levels[g], K_rep),
-        term = terms,
-        sm,
-        stringsAsFactors = FALSE
-      )
+      rows[[length(rows) + 1]] <- data.frame(component = "reporting", parameter = "gamma_rep", cause = rep(cause_levels[g], K_rep), term = terms, sm)
+    }
+  }
+
+  if (K_mono_rep > 0 && !is.null(e$beta_mono_rep_pars)) {
+    terms <- x$reporting$monotonic
+    for (g in seq_len(dim(e$beta_mono_rep_pars)[3])) {
+      mat <- matrix(e$beta_mono_rep_pars[, , g], ncol = K_mono_rep)
+      sm <- summarise_mat(mat)
+      rows[[length(rows) + 1]] <- data.frame(component = "reporting", parameter = "beta_mono_rep", cause = rep(cause_levels[g], K_mono_rep), term = terms, sm)
     }
   }
 
   out <- do.call(rbind, rows)
-
-  if (isTRUE(original_scale)) {
-    # Rescale coefficients by the standard deviation used in standardisation.
-    # For x_z = (x - centre)/scale, coef_orig = coef_z / scale.
-    scale_map <- function(component, term) {
-      if (term == "conflict") {
-        return(x$scaling$conflict$scale)
-      }
-      if (component == "mortality") {
-        scales <- x$scaling$X_mort$scale
-        names(scales) <- x$scaling$X_mort$colnames
-        return(unname(scales[term]))
-      }
-      scales <- x$scaling$X_rep$scale
-      names(scales) <- x$scaling$X_rep$colnames
-      unname(scales[term])
-    }
-
-    out$scale <- mapply(scale_map, out$component, out$term)
-    out$mean_orig <- out$mean / out$scale
-    out$sd_orig <- out$sd / out$scale
-
-    qcols <- grep("^q", names(out), value = TRUE)
-    for (qc in qcols) {
-      out[[paste0(qc, "_orig")]] <- out[[qc]] / out$scale
-    }
-  }
-
   rownames(out) <- NULL
   out
 }
@@ -323,9 +182,7 @@ vrc_coef_summary <- function(
 #' @export
 plot.vrcfit <- function(x, type = c("reporting", "mortality"), ...) {
   type <- match.arg(type)
-  if (type == "reporting") {
-    return(plot_reporting(x, ...))
-  }
+  if (type == "reporting") return(plot_reporting(x, ...))
   plot_mortality(x, ...)
 }
 
@@ -337,15 +194,12 @@ fitted.vrcfit <- function(object, ...) {
 
 #' @export
 residuals.vrcfit <- function(object, ...) {
-  mu <- stats::fitted(object)
-  y <- object$data$y
-  y - mu
+  mu <- stats::fitted(object); y <- object$data$y; y - mu
 }
 
 #' @export
 coef.vrcfit <- function(object, ...) {
   sm <- vrc_coef_summary(object, probs = 0.5, original_scale = FALSE)
-  # Create a compact named vector of posterior means
   nm <- paste0(sm$component, ":", sm$cause, ":", sm$term)
   stats::setNames(sm$mean, nm)
 }

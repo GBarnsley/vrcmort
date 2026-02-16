@@ -1,4 +1,4 @@
-  int<lower=1> N;                      // number of (time, age, sex, cause) groups
+int<lower=1> N;                      // number of (time, age, sex, cause) groups
   int<lower=1> R;
   int<lower=1> T;
   int<lower=1> A;
@@ -31,6 +31,13 @@
   int<lower=0> K_rep;
   matrix[N * R, K_rep] X_rep;
 
+  // Monotonic covariates (One set of K variables each)
+  int<lower=0> K_mono_mort;
+  matrix[N * R, K_mono_mort] X_mono_mort;
+
+  int<lower=0> K_mono_rep;
+  matrix[N * R, K_mono_rep] X_mono_rep;
+
   // post-conflict indicator by time index
   array[T] int<lower=0, upper=1> post;
   int<lower=1, upper=T> t0;
@@ -57,6 +64,10 @@
   vector[K_mort] prior_beta_mort_loc;
   vector<lower=0>[K_mort] prior_beta_mort_scale;
 
+  vector[G] prior_beta_K_mono_mort_loc;
+  vector<lower=0>[G] prior_beta_K_mono_mort_scale;
+  vector<lower=0>[G] prior_B_mono_mort_scale;
+
   vector<lower=0>[G] prior_sigma_u_lambda_scale;
   vector<lower=0>[G] prior_sigma_v_lambda_scale;
   vector<lower=0>[G] prior_sigma_beta_conf_scale;
@@ -71,6 +82,10 @@
   vector<lower=0>[G] prior_gamma_conf_scale;
   vector[K_rep] prior_gamma_rep_loc;
   vector<lower=0>[K_rep] prior_gamma_rep_scale;
+
+  vector[G] prior_beta_K_mono_rep_loc;
+  vector<lower=0>[G] prior_beta_K_mono_rep_scale;
+  vector<lower=0>[G] prior_B_mono_rep_scale;
 
   vector<lower=0>[G] prior_sigma_u_rho_scale;
   vector<lower=0>[G] prior_sigma_v_rho_scale;

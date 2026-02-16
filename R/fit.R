@@ -8,6 +8,10 @@
 #' @param t0 Conflict start time. See [vrc_standata()].
 #' @param mortality_covariates Optional formula for additional mortality covariates, excluding `conflict`.
 #' @param reporting_covariates Optional formula for additional reporting covariates, excluding `conflict`.
+#' @param mortality_monotonic Optional character vector of column names in `data`
+#'   to be treated as monotonic effects in the mortality component.
+#' @param reporting_monotonic Optional character vector of column names in `data`
+#'   to be treated as monotonic effects in the reporting component.
 #' @param mortality_conflict How to model the conflict effect in the mortality component.
 #'   Use `"fixed"` (default) for one effect shared across regions, or `"region"`
 #'   for partial pooling (random slopes) by region.
@@ -21,7 +25,7 @@
 #'   `"national"` uses a single random walk shared across regions; `"region"` adds
 #'   region-specific random walk deviations around the national trend.
 #' @param standardise Logical. If TRUE (recommended), standardise `conflict` and
-#'   covariate columns in model matrices.
+#'   any covariate columns in model matrices.
 #' @param scale_binary Logical. If TRUE, also standardise binary dummy columns.
 #' @param drop_na_y Logical. If TRUE, rows with missing `y` are removed before
 #'   fitting.
@@ -45,6 +49,8 @@ vrc_fit <- function(
   t0,
   mortality_covariates = NULL,
   reporting_covariates = NULL,
+  mortality_monotonic = NULL,
+  reporting_monotonic = NULL,
   mortality_conflict = c("fixed", "region"),
   reporting_conflict = c("fixed", "region"),
   mortality_time = c("national", "region"),
@@ -75,6 +81,8 @@ vrc_fit <- function(
     t0 = t0,
     mortality_covariates = mortality_covariates,
     reporting_covariates = reporting_covariates,
+    mortality_monotonic = mortality_monotonic,
+    reporting_monotonic = reporting_monotonic,
     mortality_conflict = mortality_conflict,
     reporting_conflict = reporting_conflict,
     mortality_time = mortality_time,

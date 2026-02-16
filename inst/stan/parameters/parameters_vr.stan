@@ -1,4 +1,4 @@
-  // ----------------------------
+// ----------------------------
   // Mortality process: log lambda
   // ----------------------------
   vector[G] alpha0;                    // cause-specific intercept
@@ -17,6 +17,11 @@
   vector<lower=0>[G] sigma_beta_conf;
   matrix[G, K_mort] beta_mort;         // additional mortality covariate effects
 
+  // Monotonic mortality (Identifiable Gaps structure)
+  vector[G] beta_K_mono_mort;          // floor (beta_K)
+  vector<lower=0>[G] B_mono_mort;      // range (beta_1 - beta_K)
+  array[G] simplex[K_mono_mort > 1 ? K_mono_mort - 1 : 1] gap_ratios_mono_mort;
+
   // ----------------------------
   // Reporting process: logit rho
   // ----------------------------
@@ -34,6 +39,11 @@
   matrix[R, G] gamma_conf_re_raw;
   vector<lower=0>[G] sigma_gamma_conf;
   matrix[G, K_rep] gamma_rep;          // additional reporting covariate effects
+
+  // Monotonic reporting (Identifiable Gaps structure)
+  vector[G] beta_K_mono_rep;           // floor
+  vector<lower=0>[G] B_mono_rep;       // range
+  array[G] simplex[K_mono_rep > 1 ? K_mono_rep - 1 : 1] gap_ratios_mono_rep;
 
   // Optional region-specific time random walks (deviations around the national trend)
   array[G] matrix[T, R] v_lambda_region_eps;

@@ -1,4 +1,4 @@
-  matrix[R, G] u_lambda;
+matrix[R, G] u_lambda;
   matrix[R, G] u_rho;
   array[G] vector[T] v_lambda;
   array[G] vector[T] v_rho;
@@ -73,3 +73,12 @@
     delta_age[a] = delta_age[a-1] + delta_age_incr[a-1];
   }
   delta_age = delta_age_scale * delta_age;
+
+  // Monotonic coefficients
+  matrix[K_mono_mort, G] beta_mono_mort;
+  matrix[K_mono_rep, G] beta_mono_rep;
+
+  for (g in 1:G) {
+    beta_mono_mort[, g] = compute_mono_beta(K_mono_mort, beta_K_mono_mort[g], B_mono_mort[g], gap_ratios_mono_mort[g]);
+    beta_mono_rep[, g] = compute_mono_beta(K_mono_rep, beta_K_mono_rep[g], B_mono_rep[g], gap_ratios_mono_rep[g]);
+  }

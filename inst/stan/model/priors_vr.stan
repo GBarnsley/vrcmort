@@ -1,4 +1,4 @@
-  // ----------------------------
+// ----------------------------
   // Priors
   // ----------------------------
 
@@ -45,6 +45,21 @@
   // Note: beta_conf is constrained >= 0 in the parameter block.
   beta_conf ~ normal(prior_beta_conf_loc, prior_beta_conf_scale);
   gamma_conf ~ normal(prior_gamma_conf_loc, prior_gamma_conf_scale);
+
+  // Monotonic effects (Gaps structure)
+  for (g in 1:G) {
+    beta_K_mono_mort[g] ~ normal(prior_beta_K_mono_mort_loc[g], prior_beta_K_mono_mort_scale[g]);
+    B_mono_mort[g] ~ normal(0, prior_B_mono_mort_scale[g]);
+    if (K_mono_mort > 1) {
+      gap_ratios_mono_mort[g] ~ dirichlet(rep_vector(1.0, K_mono_mort - 1));
+    }
+
+    beta_K_mono_rep[g] ~ normal(prior_beta_K_mono_rep_loc[g], prior_beta_K_mono_rep_scale[g]);
+    B_mono_rep[g] ~ normal(0, prior_B_mono_rep_scale[g]);
+    if (K_mono_rep > 1) {
+      gap_ratios_mono_rep[g] ~ dirichlet(rep_vector(1.0, K_mono_rep - 1));
+    }
+  }
 
   // Additional covariate effects
   if (K_mort > 0) {
