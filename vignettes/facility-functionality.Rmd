@@ -32,8 +32,7 @@ The model assumes a baseline of **non-functioning facilities** (all provided lev
 Better functioning facilities are expected to reduce mortality more than less functional ones. Therefore, the coefficients $\beta$ follow:
 $$\beta_1 < \beta_2 < \dots < \beta_K < 0$$
 
-### Reporting ($
-ho$)
+### Reporting ($\gamma$)
 Better functioning facilities are expected to increase reporting rates more than less functional ones. Therefore, the coefficients $\gamma$ follow:
 $$\gamma_1 > \gamma_2 > \dots > \gamma_K > 0$$
 
@@ -65,7 +64,8 @@ vrc_coef_summary(fit)
 ## Identifiability
 
 The model uses a "Gaps" parameterization to ensure identifiability and efficient sampling. It estimates:
+
 - The effect of the "best" level (Level 1).
-- A simplex of "gap ratios" that distribute this total effect across the intermediate levels down to the zero baseline.
+- A simplex of "gap ratios" that distribute this total effect across the intermediate levels down to the zero baseline for the remaining levels.
 
 This structure guarantees that the strictly monotonic relationships are maintained throughout the posterior.

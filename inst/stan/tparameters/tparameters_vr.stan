@@ -48,8 +48,10 @@ matrix[R, G] u_lambda;
   for (g in 1:G) {
     real sb = sigma_beta_conf[g];
     real sg = sigma_gamma_conf[g];
-    real mb = mean(beta_conf_re_raw[, g]);
-    real mg = mean(gamma_conf_re_raw[, g]);
+    
+    // Mean of raw effects only if they exist
+    real mb = (use_beta_conf_re == 1) ? mean(beta_conf_re_raw[, g]) : 0.0;
+    real mg = (use_gamma_conf_re == 1) ? mean(gamma_conf_re_raw[, g]) : 0.0;
 
     for (r in 1:R) {
       if (use_beta_conf_re == 1) {
@@ -78,7 +80,18 @@ matrix[R, G] u_lambda;
   matrix[K_fac_mort, G] beta_fac_mort;
   matrix[K_fac_rep, G] gamma_fac_rep;
 
-  for (g in 1:G) {
-    beta_fac_mort[, g] = compute_fac_beta(K_fac_mort, beta_fac_best_mort[g], gap_ratios_fac_mort[g]);
-    gamma_fac_rep[, g] = compute_fac_beta(K_fac_rep, gamma_fac_best_rep[g], gap_ratios_fac_rep[g]);
+  if (K_fac_mort > 0) {
+    for (g in 1:G) {
+      beta_fac_mort[, g] = compute_fac_beta(K_fac_mort, beta_fac_best_mort[g], gap_ratios_fac_mort[g]);
+    }
+  } else {
+    beta_fac_mort = rep_matrix(0, 0, G);
+  }
+
+  if (K_fac_rep > 0) {
+    for (g in 1:G) {
+      gamma_fac_rep[, g] = compute_fac_beta(K_fac_rep, gamma_fac_best_rep[g], gap_ratios_fac_rep[g]);
+    }
+  } else {
+    gamma_fac_rep = rep_matrix(0, 0, G);
   }

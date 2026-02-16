@@ -12,20 +12,24 @@
   to_vector(u_rho_raw) ~ normal(0, 1);
 
   // Optional region-varying conflict slopes (raw)
-  to_vector(beta_conf_re_raw) ~ normal(0, 1);
-  to_vector(gamma_conf_re_raw) ~ normal(0, 1);
-
-  // Hyperpriors for region-varying conflict slope scales
-  sigma_beta_conf ~ normal(0, prior_sigma_beta_conf_scale);
-  sigma_gamma_conf ~ normal(0, prior_sigma_gamma_conf_scale);
+  if (use_beta_conf_re == 1) {
+    to_vector(beta_conf_re_raw) ~ normal(0, 1);
+    sigma_beta_conf ~ normal(0, prior_sigma_beta_conf_scale);
+  }
+  if (use_gamma_conf_re == 1) {
+    to_vector(gamma_conf_re_raw) ~ normal(0, 1);
+    sigma_gamma_conf ~ normal(0, prior_sigma_gamma_conf_scale);
+  }
 
   // Optional region-specific time RW deviations (raw)
-  for (g in 1:G) {
-    to_vector(v_lambda_region_eps[g]) ~ normal(0, 1);
-    to_vector(v_rho_region_eps[g]) ~ normal(0, 1);
+  if (use_rw_region_lambda == 1) {
+    for (g in 1:G) to_vector(v_lambda_region_eps[g]) ~ normal(0, 1);
+    sigma_v_lambda_region ~ normal(0, prior_sigma_v_lambda_region_scale);
   }
-  sigma_v_lambda_region ~ normal(0, prior_sigma_v_lambda_region_scale);
-  sigma_v_rho_region ~ normal(0, prior_sigma_v_rho_region_scale);
+  if (use_rw_region_rho == 1) {
+    for (g in 1:G) to_vector(v_rho_region_eps[g]) ~ normal(0, 1);
+    sigma_v_rho_region ~ normal(0, prior_sigma_v_rho_region_scale);
+  }
 
   // National time RW innovations (raw)
   for (g in 1:G) {
@@ -49,14 +53,14 @@
   // Healthcare facility effects (monotonic)
   for (g in 1:G) {
     // beta_fac_best_mort is upper=0
-    beta_fac_best_mort[g] ~ normal(prior_beta_fac_best_loc[g], prior_beta_fac_best_scale[g]);
     if (K_fac_mort > 0) {
+      beta_fac_best_mort[g] ~ normal(prior_beta_fac_best_loc[g], prior_beta_fac_best_scale[g]);
       gap_ratios_fac_mort[g] ~ dirichlet(rep_vector(1.0, K_fac_mort));
     }
 
     // gamma_fac_best_rep is lower=0
-    gamma_fac_best_rep[g] ~ normal(prior_gamma_fac_best_loc[g], prior_gamma_fac_best_scale[g]);
     if (K_fac_rep > 0) {
+      gamma_fac_best_rep[g] ~ normal(prior_gamma_fac_best_loc[g], prior_gamma_fac_best_scale[g]);
       gap_ratios_fac_rep[g] ~ dirichlet(rep_vector(1.0, K_fac_rep));
     }
   }

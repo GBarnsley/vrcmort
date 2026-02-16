@@ -49,6 +49,9 @@
   // 1 = use missing label likelihood, 0 = ignore
   int<lower=0, upper=1> use_mar_labels;
 
+  // index of cause to apply age-selective penalty to
+  int<lower=1, upper=G> cause_idx_age_penalty;
+
   // prior predictive mode
   int<lower=0, upper=1> prior_PD;
 

@@ -96,7 +96,10 @@ vrc_standata <- function(
     dplyr::distinct(dplyr::across(dplyr::all_of(join_cols)))
 
   if (use_mar_labels && nrow(groups_in_miss) < nrow(groups_in_df)) {
-    warning("Some cells with labeled deaths have no corresponding missing-region entry. They will be treated as having zero missing-region deaths.", call. = FALSE)
+    warning(
+      "Some cells with labeled deaths have no corresponding missing-region entry. They will be treated as having zero missing-region deaths.",
+      call. = FALSE
+    )
   }
 
   all_groups <- dplyr::union(groups_in_df, groups_in_miss) |>
@@ -187,6 +190,7 @@ vrc_standata <- function(
     t0 = as.integer(meta$t0),
     y_miss = as_stan_array_int(df_miss_final$y),
     use_mar_labels = as.integer(use_mar_labels),
+    cause_idx_age_penalty = 2,
     prior_PD = as.integer(prior_PD)
   )
 
