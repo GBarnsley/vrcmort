@@ -123,12 +123,13 @@ This is implemented in Stan.
 A core log-linear structure is:
 
 `log λ_{r,t,a,s,g} = α_{0,g} + α_{age[a],g} + α_{sex[s],g} + u^{(λ)}_{r,g} + v^{(λ)}_{t,g}
-                    + β_{conf,g} * conflict_{r,t} + X^{mort}_{i} β^{mort}_{g} + ...`
+                    + β_{conf,g} * conflict_{r,t} + β_{fac,g} * fac\_level_{r,t} + X^{mort}_{i} β^{mort}_{g} + ...`
 
 Where:
 - `u^{(λ)}_{r,g}` is a region random intercept by cause
 - `v^{(λ)}_{t,g}` is a national time random walk (RW1) by cause
 - `β_{conf,g}` is the (global) conflict effect on true mortality by cause
+- `β_{fac,g}` represents healthcare facility functionality effects (modeled monotonically)
 - `X^{mort}` is a design matrix for user-specified mortality covariates via formula input
 
 Optional partial pooling extensions supported by the package:
@@ -141,7 +142,7 @@ Optional partial pooling extensions supported by the package:
 A reporting model:
 
 `logit ρ_{r,t,a,s,g} = κ_{0,g} + κ_{post,g} * post_t + u^{(ρ)}_{r,g} + v^{(ρ)}_{t,g}
-                       + γ_{conf,g} * conflict_{r,t} + X^{rep}_{i} γ^{rep}_{g} + age_penalty(a,t,g) + ...`
+                       + γ_{conf,g} * conflict_{r,t} + γ_{fac,g} * fac\_level_{r,t} + X^{rep}_{i} γ^{rep}_{g} + age_penalty(a,t,g) + ...`
 
 Where:
 - `post_t` indicates post-conflict period (`t >= t0`)
@@ -149,7 +150,16 @@ Where:
 - `κ_{post,g}` is a post-conflict shift in reporting
 - `u^{(ρ)}_{r,g}` and `v^{(ρ)}_{t,g}` are region and time effects for reporting
 - `γ_{conf,g}` allows conflict to reduce reporting completeness (often negative for non-trauma)
+- `γ_{fac,g}` represents healthcare facility functionality effects (modeled monotonically)
 - `X^{rep}` is a design matrix for user-specified reporting covariates
+
+#### Monotonic Healthcare Facility Effects
+The model supports ordered categorical indicators for healthcare facility functionality (e.g., "fully functional", "partially functional", "non-functional"). These are modeled using a monotonic effect structure:
+- Level 1 (perfectly functional) has a maximum effect `β_{fac,best}`.
+- Intermediate levels have effects scaled by a simplex of "gap ratios".
+- Non-functioning facilities (baseline) have an effect of 0.
+- For mortality, better functionality reduces rates (`β_{fac,best} < 0`).
+- For reporting, better functionality typically increases completeness (`γ_{fac,best} > 0`).
 
 #### Age-selective reporting collapse (non-trauma)
 A key mechanism for the motivating pathology is a post-conflict age penalty applied mainly to non-trauma:
@@ -193,15 +203,14 @@ With only VR counts, `λ` and `ρ` are partially confounded because `μ = exposu
 ## The R package interface
 
 ### Core user-facing functions
-- `vrc_simulate()` creates simulated VR long datasets with configurable:
-  - mortality and reporting parameters,
-  - misclassification (simulator),
-  - additional missingness patterns: block, age-selective, MNAR, combined.
-
-- `vrc_validate_data()` checks the VR long format integrity.
-- `vrc_diagnose_reporting()` provides quick plots to detect reporting artefacts.
-- `vrc_fit()` fits the base model (and extensions) via rstan.
-- `vrcm()` provides an epidemia-like wrapper that takes mortality and reporting components.
+- `vrc_simulate()` creates simulated VR long datasets with configurable parameters and missingness patterns (block, age-selective, MNAR).
+- `vrc_validate_data()` checks VR long format integrity and catches common pipeline errors.
+- `vrc_index()` prepares data for Stan by creating integer identifiers and handling duplicate aggregation.
+- `vrc_diagnose_reporting()` provides exploratory plots to detect reporting artefacts before fitting.
+- `vrc_fit()` / `vrcm()` fit the hierarchical model using `rstan`.
+- `vrc_coef_summary()` provides formatted summaries of covariate effects across causes.
+- `vrc_conflict_effects()` extracts region-specific conflict slopes when partial pooling is enabled.
+- `vrc_prior_summary()` inspects the resolved priors used in a fit.
 
 ### Model extension controls (package-level)
 The package supports toggles via the user interface:
