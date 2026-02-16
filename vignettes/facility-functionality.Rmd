@@ -1,0 +1,71 @@
+---
+title: "Modeling Healthcare Facility Functionality"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Modeling Healthcare Facility Functionality}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+The `vrcmort` package allows incorporating the impact of healthcare facility functionality on mortality and reporting rates using a strictly monotonic structure. This feature is particularly useful when you have data on the number of facilities at different levels of functionality (e.g., from HeRAMS or similar assessments).
+
+## Monotonic Constraints
+
+We assume that facility levels are provided in **decreasing order of functionality**:
+1. **Level 1**: Perfectly functioning.
+2. **Level 2**: Partially functioning.
+3. ...
+4. **Level K**: Minimally functioning.
+
+The model assumes a baseline of **non-functioning facilities** (all provided levels = 0) which has zero effect on the log-mortality or logit-reporting.
+
+### Mortality ($\lambda$)
+Better functioning facilities are expected to reduce mortality more than less functional ones. Therefore, the coefficients $\beta$ follow:
+$$\beta_1 < \beta_2 < \dots < \beta_K < 0$$
+
+### Reporting ($
+ho$)
+Better functioning facilities are expected to increase reporting rates more than less functional ones. Therefore, the coefficients $\gamma$ follow:
+$$\gamma_1 > \gamma_2 > \dots > \gamma_K > 0$$
+
+## Usage
+
+To use this feature, provide the names of the columns representing the facility counts to the `facilities` argument in `vrc_mortality()` or `vrc_reporting()`.
+
+```{r example, eval = FALSE}
+library(vrcmort)
+
+# Assume df has columns 'perfect_fac', 'partial_fac', 'minimal_fac'
+# representing standardized counts or proportions.
+
+fit <- vrcm(
+  mortality = vrc_mortality(
+    facilities = c("perfect_fac", "partial_fac", "minimal_fac")
+  ),
+  reporting = vrc_reporting(
+    facilities = c("perfect_fac", "partial_fac")
+  ),
+  data = df,
+  t0 = "2023-01-01"
+)
+
+# Summarise the inferred coefficients
+vrc_coef_summary(fit)
+```
+
+## Identifiability
+
+The model uses a "Gaps" parameterization to ensure identifiability and efficient sampling. It estimates:
+- The effect of the "best" level (Level 1).
+- A simplex of "gap ratios" that distribute this total effect across the intermediate levels down to the zero baseline.
+
+This structure guarantees that the strictly monotonic relationships are maintained throughout the posterior.

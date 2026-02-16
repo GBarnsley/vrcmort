@@ -119,10 +119,8 @@ beta <- function(shape1 = 1, shape2 = 1) {
 #' @param sigma_v_rho Prior scale for national time RW scales (reporting).
 #' @param sigma_gamma_conf Prior scale for region-varying conflict slope scales (reporting).
 #' @param sigma_v_rho_region Prior scale for region-specific time RW scales (reporting).
-#' @param beta_K_mono_mort Prior for mortality monotonic baseline.
-#' @param B_mono_mort Prior for mortality monotonic range.
-#' @param beta_K_mono_rep Prior for reporting monotonic baseline.
-#' @param B_mono_rep Prior for reporting monotonic range.
+#' @param beta_fac_best Prior for the effect of perfectly functioning facilities on mortality.
+#' @param gamma_fac_best Prior for the effect of perfectly functioning facilities on reporting.
 #' @param delta_age_incr Prior scale for increments in the monotone age penalty.
 #' @param delta_age_scale Prior scale for the overall monotone age penalty scale.
 #' @param phi Prior for the NB2 dispersion parameter.
@@ -148,10 +146,8 @@ vrc_priors <- function(
   sigma_v_rho = normal(0, 0.2, autoscale = FALSE),
   sigma_gamma_conf = normal(0, 0.5, autoscale = FALSE),
   sigma_v_rho_region = normal(0, 0.2, autoscale = FALSE),
-  beta_K_mono_mort = normal(0, 5, autoscale = FALSE),
-  B_mono_mort = normal(0, 5, autoscale = FALSE),
-  beta_K_mono_rep = normal(0, 5, autoscale = FALSE),
-  B_mono_rep = normal(0, 5, autoscale = FALSE),
+  beta_fac_best = normal(0, 5, autoscale = FALSE),
+  gamma_fac_best = normal(0, 5, autoscale = FALSE),
   delta_age_incr = normal(0, 0.5, autoscale = FALSE),
   delta_age_scale = normal(0, 1, autoscale = FALSE),
   phi = exponential(1),
@@ -189,10 +185,8 @@ vrc_priors <- function(
   .check_prior_or_null(sigma_v_rho, "sigma_v_rho")
   .check_prior_or_null(sigma_gamma_conf, "sigma_gamma_conf")
   .check_prior_or_null(sigma_v_rho_region, "sigma_v_rho_region")
-  .check_prior_or_null(beta_K_mono_mort, "beta_K_mono_mort")
-  .check_prior_or_null(B_mono_mort, "B_mono_mort")
-  .check_prior_or_null(beta_K_mono_rep, "beta_K_mono_rep")
-  .check_prior_or_null(B_mono_rep, "B_mono_rep")
+  .check_prior_or_null(beta_fac_best, "beta_fac_best")
+  .check_prior_or_null(gamma_fac_best, "gamma_fac_best")
   .check_prior_or_null(delta_age_incr, "delta_age_incr")
   .check_prior_or_null(delta_age_scale, "delta_age_scale")
   .check_prior_or_null(phi, "phi")
@@ -217,10 +211,8 @@ vrc_priors <- function(
       sigma_v_rho = sigma_v_rho,
       sigma_gamma_conf = sigma_gamma_conf,
       sigma_v_rho_region = sigma_v_rho_region,
-      beta_K_mono_mort = beta_K_mono_mort,
-      B_mono_mort = B_mono_mort,
-      beta_K_mono_rep = beta_K_mono_rep,
-      B_mono_rep = B_mono_rep,
+      beta_fac_best = beta_fac_best,
+      gamma_fac_best = gamma_fac_best,
       delta_age_incr = delta_age_incr,
       delta_age_scale = delta_age_scale,
       phi = phi,
@@ -367,11 +359,19 @@ vrc_resolve_priors <- function(priors, G, K_mort, K_rep, X_mort, X_rep) {
     x_scale = x_rep_scale
   )
 
-  # monotonic scale/baseline
-  bm_K <- get_loc_scale(priors$beta_K_mono_mort, G, default_loc = 0, default_scale = 5)
-  bm_B <- get_loc_scale(priors$B_mono_mort, G, default_loc = 0, default_scale = 5)
-  gr_K <- get_loc_scale(priors$beta_K_mono_rep, G, default_loc = 0, default_scale = 5)
-  gr_B <- get_loc_scale(priors$B_mono_rep, G, default_loc = 0, default_scale = 5)
+  # healthcare facility functionality effects (monotonic)
+  fb_m <- get_loc_scale(
+    priors$beta_fac_best,
+    G,
+    default_loc = 0,
+    default_scale = 5
+  )
+  fb_r <- get_loc_scale(
+    priors$gamma_fac_best,
+    G,
+    default_loc = 0,
+    default_scale = 5
+  )
 
   # reporting anchors
   if (is.null(priors$kappa0)) {
@@ -482,9 +482,8 @@ vrc_resolve_priors <- function(priors, G, K_mort, K_rep, X_mort, X_rep) {
     prior_beta_conf_scale = bc$scale,
     prior_beta_mort_loc = bm$loc,
     prior_beta_mort_scale = bm$scale,
-    prior_beta_K_mono_mort_loc = bm_K$loc,
-    prior_beta_K_mono_mort_scale = bm_K$scale,
-    prior_B_mono_mort_scale = bm_B$scale,
+    prior_beta_fac_best_loc = fb_m$loc,
+    prior_beta_fac_best_scale = fb_m$scale,
     prior_sigma_u_lambda_scale = suL$scale,
     prior_sigma_v_lambda_scale = svL$scale,
     prior_sigma_beta_conf_scale = sbc$scale,
@@ -497,9 +496,8 @@ vrc_resolve_priors <- function(priors, G, K_mort, K_rep, X_mort, X_rep) {
     prior_gamma_conf_scale = gc$scale,
     prior_gamma_rep_loc = gr$loc,
     prior_gamma_rep_scale = gr$scale,
-    prior_beta_K_mono_rep_loc = gr_K$loc,
-    prior_beta_K_mono_rep_scale = gr_K$scale,
-    prior_B_mono_rep_scale = gr_B$scale,
+    prior_gamma_fac_best_loc = fb_r$loc,
+    prior_gamma_fac_best_scale = fb_r$scale,
     prior_sigma_u_rho_scale = suR$scale,
     prior_sigma_v_rho_scale = svR$scale,
     prior_sigma_gamma_conf_scale = sgc$scale,
@@ -535,16 +533,39 @@ vrc_prior_summary <- function(x) {
   }
 
   prior_names <- c(
-    "alpha0_loc", "alpha0_scale", "alpha_age_scale", "alpha_sex_scale",
-    "beta_conf_loc", "beta_conf_scale", "beta_mort_loc", "beta_mort_scale",
-    "beta_K_mono_mort_loc", "beta_K_mono_mort_scale", "B_mono_mort_scale",
-    "sigma_u_lambda_scale", "sigma_v_lambda_scale", "sigma_beta_conf_scale",
-    "sigma_v_lambda_region_scale", "kappa0_loc", "kappa0_scale",
-    "kappa_post_loc", "kappa_post_scale", "gamma_conf_loc", "gamma_conf_scale",
-    "gamma_rep_loc", "gamma_rep_scale", "beta_K_mono_rep_loc", "beta_K_mono_rep_scale",
-    "B_mono_rep_scale", "sigma_u_rho_scale", "sigma_v_rho_scale",
-    "sigma_gamma_conf_scale", "sigma_v_rho_region_scale", "delta_age_incr_scale",
-    "delta_age_scale_scale", "phi_rate", "omega_a", "omega_b"
+    "alpha0_loc",
+    "alpha0_scale",
+    "alpha_age_scale",
+    "alpha_sex_scale",
+    "beta_conf_loc",
+    "beta_conf_scale",
+    "beta_mort_loc",
+    "beta_mort_scale",
+    "beta_fac_best_loc",
+    "beta_fac_best_scale",
+    "sigma_u_lambda_scale",
+    "sigma_v_lambda_scale",
+    "sigma_beta_conf_scale",
+    "sigma_v_lambda_region_scale",
+    "kappa0_loc",
+    "kappa0_scale",
+    "kappa_post_loc",
+    "kappa_post_scale",
+    "gamma_conf_loc",
+    "gamma_conf_scale",
+    "gamma_rep_loc",
+    "gamma_rep_scale",
+    "gamma_fac_best_loc",
+    "gamma_fac_best_scale",
+    "sigma_u_rho_scale",
+    "sigma_v_rho_scale",
+    "sigma_gamma_conf_scale",
+    "sigma_v_rho_region_scale",
+    "delta_age_incr_scale",
+    "delta_age_scale_scale",
+    "phi_rate",
+    "omega_a",
+    "omega_b"
   )
 
   # Map over names to build summary rows

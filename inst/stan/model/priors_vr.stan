@@ -46,18 +46,18 @@
   beta_conf ~ normal(prior_beta_conf_loc, prior_beta_conf_scale);
   gamma_conf ~ normal(prior_gamma_conf_loc, prior_gamma_conf_scale);
 
-  // Monotonic effects (Gaps structure)
+  // Healthcare facility effects (monotonic)
   for (g in 1:G) {
-    beta_K_mono_mort[g] ~ normal(prior_beta_K_mono_mort_loc[g], prior_beta_K_mono_mort_scale[g]);
-    B_mono_mort[g] ~ normal(0, prior_B_mono_mort_scale[g]);
-    if (K_mono_mort > 1) {
-      gap_ratios_mono_mort[g] ~ dirichlet(rep_vector(1.0, K_mono_mort - 1));
+    // beta_fac_best_mort is upper=0
+    beta_fac_best_mort[g] ~ normal(prior_beta_fac_best_loc[g], prior_beta_fac_best_scale[g]);
+    if (K_fac_mort > 0) {
+      gap_ratios_fac_mort[g] ~ dirichlet(rep_vector(1.0, K_fac_mort));
     }
 
-    beta_K_mono_rep[g] ~ normal(prior_beta_K_mono_rep_loc[g], prior_beta_K_mono_rep_scale[g]);
-    B_mono_rep[g] ~ normal(0, prior_B_mono_rep_scale[g]);
-    if (K_mono_rep > 1) {
-      gap_ratios_mono_rep[g] ~ dirichlet(rep_vector(1.0, K_mono_rep - 1));
+    // gamma_fac_best_rep is lower=0
+    gamma_fac_best_rep[g] ~ normal(prior_gamma_fac_best_loc[g], prior_gamma_fac_best_scale[g]);
+    if (K_fac_rep > 0) {
+      gap_ratios_fac_rep[g] ~ dirichlet(rep_vector(1.0, K_fac_rep));
     }
   }
 

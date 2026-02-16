@@ -74,11 +74,11 @@ matrix[R, G] u_lambda;
   }
   delta_age = delta_age_scale * delta_age;
 
-  // Monotonic coefficients
-  matrix[K_mono_mort, G] beta_mono_mort;
-  matrix[K_mono_rep, G] beta_mono_rep;
+  // Healthcare facility coefficients (monotonic)
+  matrix[K_fac_mort, G] beta_fac_mort;
+  matrix[K_fac_rep, G] gamma_fac_rep;
 
   for (g in 1:G) {
-    beta_mono_mort[, g] = compute_mono_beta(K_mono_mort, beta_K_mono_mort[g], B_mono_mort[g], gap_ratios_mono_mort[g]);
-    beta_mono_rep[, g] = compute_mono_beta(K_mono_rep, beta_K_mono_rep[g], B_mono_rep[g], gap_ratios_mono_rep[g]);
+    beta_fac_mort[, g] = compute_fac_beta(K_fac_mort, beta_fac_best_mort[g], gap_ratios_fac_mort[g]);
+    gamma_fac_rep[, g] = compute_fac_beta(K_fac_rep, gamma_fac_best_rep[g], gap_ratios_fac_rep[g]);
   }

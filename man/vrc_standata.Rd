@@ -9,8 +9,8 @@ vrc_standata(
   t0,
   mortality_covariates = NULL,
   reporting_covariates = NULL,
-  mortality_monotonic = NULL,
-  reporting_monotonic = NULL,
+  mortality_facilities = NULL,
+  reporting_facilities = NULL,
   mortality_conflict = c("fixed", "region"),
   reporting_conflict = c("fixed", "region"),
   mortality_time = c("national", "region"),
@@ -33,9 +33,11 @@ vrc_standata(
 
 \item{reporting_covariates}{Optional formula for additional reporting covariates.}
 
-\item{mortality_monotonic}{Optional character vector of level column names for mortality.}
+\item{mortality_facilities}{Optional character vector of level column names for mortality.
+Provided in decreasing order of functionality (perfect -> minimal).}
 
-\item{reporting_monotonic}{Optional character vector of level column names for reporting.}
+\item{reporting_facilities}{Optional character vector of level column names for reporting.
+Provided in decreasing order of functionality (perfect -> minimal).}
 
 \item{mortality_conflict}{How to model conflict in mortality ("fixed" or "region").}
 
@@ -45,7 +47,7 @@ vrc_standata(
 
 \item{reporting_time}{How to model time in reporting ("national" or "region").}
 
-\item{standardise}{Logical. If TRUE, standardise non-monotonic covariates.}
+\item{standardise}{Logical. If TRUE, standardise non-facility covariates.}
 
 \item{scale_binary}{Logical.}
 

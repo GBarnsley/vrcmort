@@ -1,4 +1,4 @@
-int<lower=1> N;                      // number of (time, age, sex, cause) groups
+  int<lower=1> N;                      // number of (time, age, sex, cause) groups
   int<lower=1> R;
   int<lower=1> T;
   int<lower=1> A;
@@ -31,12 +31,13 @@ int<lower=1> N;                      // number of (time, age, sex, cause) groups
   int<lower=0> K_rep;
   matrix[N * R, K_rep] X_rep;
 
-  // Monotonic covariates (One set of K variables each)
-  int<lower=0> K_mono_mort;
-  matrix[N * R, K_mono_mort] X_mono_mort;
+  // Healthcare facility functionality covariates (monotonic)
+  // K levels of functionality, provided in decreasing order (perfect -> minimal)
+  int<lower=0> K_fac_mort;
+  matrix[N * R, K_fac_mort] X_fac_mort;
 
-  int<lower=0> K_mono_rep;
-  matrix[N * R, K_mono_rep] X_mono_rep;
+  int<lower=0> K_fac_rep;
+  matrix[N * R, K_fac_rep] X_fac_rep;
 
   // post-conflict indicator by time index
   array[T] int<lower=0, upper=1> post;
@@ -64,9 +65,9 @@ int<lower=1> N;                      // number of (time, age, sex, cause) groups
   vector[K_mort] prior_beta_mort_loc;
   vector<lower=0>[K_mort] prior_beta_mort_scale;
 
-  vector[G] prior_beta_K_mono_mort_loc;
-  vector<lower=0>[G] prior_beta_K_mono_mort_scale;
-  vector<lower=0>[G] prior_B_mono_mort_scale;
+  // Facility effect priors (mortality)
+  vector[G] prior_beta_fac_best_loc;
+  vector<lower=0>[G] prior_beta_fac_best_scale;
 
   vector<lower=0>[G] prior_sigma_u_lambda_scale;
   vector<lower=0>[G] prior_sigma_v_lambda_scale;
@@ -83,9 +84,9 @@ int<lower=1> N;                      // number of (time, age, sex, cause) groups
   vector[K_rep] prior_gamma_rep_loc;
   vector<lower=0>[K_rep] prior_gamma_rep_scale;
 
-  vector[G] prior_beta_K_mono_rep_loc;
-  vector<lower=0>[G] prior_beta_K_mono_rep_scale;
-  vector<lower=0>[G] prior_B_mono_rep_scale;
+  // Facility effect priors (reporting)
+  vector[G] prior_gamma_fac_best_loc;
+  vector<lower=0>[G] prior_gamma_fac_best_scale;
 
   vector<lower=0>[G] prior_sigma_u_rho_scale;
   vector<lower=0>[G] prior_sigma_v_rho_scale;

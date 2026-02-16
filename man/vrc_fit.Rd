@@ -9,8 +9,8 @@ vrc_fit(
   t0,
   mortality_covariates = NULL,
   reporting_covariates = NULL,
-  mortality_monotonic = NULL,
-  reporting_monotonic = NULL,
+  mortality_facilities = NULL,
+  reporting_facilities = NULL,
   mortality_conflict = c("fixed", "region"),
   reporting_conflict = c("fixed", "region"),
   mortality_time = c("national", "region"),
@@ -29,68 +29,48 @@ vrc_fit(
 )
 }
 \arguments{
-\item{data}{A data.frame in long format (see \code{\link[=vrc_standata]{vrc_standata()}}).}
+\item{data}{A data.frame in long format.}
 
-\item{t0}{Conflict start time. See \code{\link[=vrc_standata]{vrc_standata()}}.}
+\item{t0}{Conflict start time.}
 
-\item{mortality_covariates}{Optional formula for additional mortality covariates, excluding \code{conflict}.}
+\item{mortality_covariates}{Optional formula for additional mortality covariates.}
 
-\item{reporting_covariates}{Optional formula for additional reporting covariates, excluding \code{conflict}.}
+\item{reporting_covariates}{Optional formula for additional reporting covariates.}
 
-\item{mortality_monotonic}{Optional character vector of column names in \code{data}
-to be treated as monotonic effects in the mortality component.}
+\item{mortality_facilities}{Optional character vector of facility level column names for mortality.}
 
-\item{reporting_monotonic}{Optional character vector of column names in \code{data}
-to be treated as monotonic effects in the reporting component.}
+\item{reporting_facilities}{Optional character vector of facility level column names for reporting.}
 
-\item{mortality_conflict}{How to model the conflict effect in the mortality component.
-Use \code{"fixed"} (default) for one effect shared across regions, or \code{"region"}
-for partial pooling (random slopes) by region.}
+\item{mortality_conflict}{How to model conflict in mortality ("fixed" or "region").}
 
-\item{reporting_conflict}{How to model the conflict effect in the reporting component.
-Use \code{"fixed"} (default) for one effect shared across regions, or \code{"region"}
-for partial pooling (random slopes) by region.}
+\item{reporting_conflict}{How to model conflict in reporting ("fixed" or "region").}
 
-\item{mortality_time}{How to model time variation in the mortality component.
-\code{"national"} uses a single random walk shared across regions; \code{"region"} adds
-region-specific random walk deviations around the national trend.}
+\item{mortality_time}{How to model time in mortality ("national" or "region").}
 
-\item{reporting_time}{How to model time variation in the reporting component.
-\code{"national"} uses a single random walk shared across regions; \code{"region"} adds
-region-specific random walk deviations around the national trend.}
+\item{reporting_time}{How to model time in reporting ("national" or "region").}
 
-\item{standardise}{Logical. If TRUE (recommended), standardise \code{conflict} and
-any covariate columns in model matrices.}
+\item{standardise}{Logical.}
 
-\item{scale_binary}{Logical. If TRUE, also standardise binary dummy columns.}
+\item{scale_binary}{Logical.}
 
-\item{drop_na_y}{Logical. If TRUE, rows with missing \code{y} are removed before
-fitting.}
+\item{drop_na_y}{Logical.}
 
-\item{duplicates}{How to handle duplicate identifier rows. One of
-\code{"error"} (default) or \code{"sum"}.}
+\item{duplicates}{Duplicate handling.}
 
-\item{use_mar_labels}{Logical. If TRUE, account for missing region labels
-using a Missing At Random (MAR) assumption with a labeling probability
-\code{omega}. If FALSE (default), rows with missing region labels are ignored.}
+\item{use_mar_labels}{Logical.}
 
-\item{algorithm}{One of \code{"sampling"}, \code{"meanfield"}, or \code{"fullrank"} (passed to \code{rstan}).}
+\item{algorithm}{Inference algorithm.}
 
-\item{priors}{Optional prior specification created by \code{\link[=vrc_priors]{vrc_priors()}}. If
-\code{NULL} (default), uses \code{\link[=vrc_priors]{vrc_priors()}} with package defaults.}
+\item{priors}{Optional prior bundle.}
 
-\item{prior_PD}{Logical. If TRUE, samples from the prior distribution (no likelihood).}
+\item{prior_PD}{Logical.}
 
-\item{backend}{Backend to use. Currently only \code{"rstan"} is supported.}
+\item{backend}{Backend.}
 
-\item{stan_model}{Stan model name. Defaults to \code{"vr_reporting_model"}.}
+\item{stan_model}{Model name.}
 
-\item{...}{Additional arguments passed to \code{rstan::sampling} or \code{rstan::vb}.}
-}
-\value{
-An object of class \code{vrcfit}.
+\item{...}{Passed to sampling.}
 }
 \description{
-Fit the hierarchical VR mortality model with an explicit reporting process.
-The model is implemented in Stan and is fit using \code{rstan}.
+Fit the hierarchical VR mortality model with facility functionality effects.
 }

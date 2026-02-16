@@ -6,7 +6,7 @@
 \usage{
 vrc_reporting(
   formula = ~1,
-  monotonic = NULL,
+  facilities = NULL,
   conflict = c("fixed", "region"),
   time = c("national", "region")
 )
@@ -14,7 +14,7 @@ vrc_reporting(
 \arguments{
 \item{formula}{A model formula for additional reporting covariates.}
 
-\item{monotonic}{Optional character vector of level column names to treat as monotonic.}
+\item{facilities}{Optional character vector of facility level column names (perfect -> minimal).}
 
 \item{conflict}{How to model conflict in reporting ("fixed" or "region").}
 

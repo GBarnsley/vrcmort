@@ -1,56 +1,38 @@
 #' Fit the VR reporting model
 #'
 #' @description
-#' Fit the hierarchical VR mortality model with an explicit reporting process.
-#' The model is implemented in Stan and is fit using `rstan`.
+#' Fit the hierarchical VR mortality model with facility functionality effects.
 #'
-#' @param data A data.frame in long format (see [vrc_standata()]).
-#' @param t0 Conflict start time. See [vrc_standata()].
-#' @param mortality_covariates Optional formula for additional mortality covariates, excluding `conflict`.
-#' @param reporting_covariates Optional formula for additional reporting covariates, excluding `conflict`.
-#' @param mortality_monotonic Optional character vector of column names in `data`
-#'   to be treated as monotonic effects in the mortality component.
-#' @param reporting_monotonic Optional character vector of column names in `data`
-#'   to be treated as monotonic effects in the reporting component.
-#' @param mortality_conflict How to model the conflict effect in the mortality component.
-#'   Use `"fixed"` (default) for one effect shared across regions, or `"region"`
-#'   for partial pooling (random slopes) by region.
-#' @param reporting_conflict How to model the conflict effect in the reporting component.
-#'   Use `"fixed"` (default) for one effect shared across regions, or `"region"`
-#'   for partial pooling (random slopes) by region.
-#' @param mortality_time How to model time variation in the mortality component.
-#'   `"national"` uses a single random walk shared across regions; `"region"` adds
-#'   region-specific random walk deviations around the national trend.
-#' @param reporting_time How to model time variation in the reporting component.
-#'   `"national"` uses a single random walk shared across regions; `"region"` adds
-#'   region-specific random walk deviations around the national trend.
-#' @param standardise Logical. If TRUE (recommended), standardise `conflict` and
-#'   any covariate columns in model matrices.
-#' @param scale_binary Logical. If TRUE, also standardise binary dummy columns.
-#' @param drop_na_y Logical. If TRUE, rows with missing `y` are removed before
-#'   fitting.
-#' @param duplicates How to handle duplicate identifier rows. One of
-#'   `"error"` (default) or `"sum"`.
-#' @param use_mar_labels Logical. If TRUE, account for missing region labels
-#'   using a Missing At Random (MAR) assumption with a labeling probability
-#'   `omega`. If FALSE (default), rows with missing region labels are ignored.
-#' @param algorithm One of `"sampling"`, `"meanfield"`, or `"fullrank"` (passed to `rstan`).
-#' @param priors Optional prior specification created by [vrc_priors()]. If
-#'   `NULL` (default), uses [vrc_priors()] with package defaults.
-#' @param prior_PD Logical. If TRUE, samples from the prior distribution (no likelihood).
-#' @param backend Backend to use. Currently only `"rstan"` is supported.
-#' @param stan_model Stan model name. Defaults to `"vr_reporting_model"`.
-#' @param ... Additional arguments passed to `rstan::sampling` or `rstan::vb`.
+#' @param data A data.frame in long format.
+#' @param t0 Conflict start time.
+#' @param mortality_covariates Optional formula for additional mortality covariates.
+#' @param reporting_covariates Optional formula for additional reporting covariates.
+#' @param mortality_facilities Optional character vector of facility level column names for mortality.
+#' @param reporting_facilities Optional character vector of facility level column names for reporting.
+#' @param mortality_conflict How to model conflict in mortality ("fixed" or "region").
+#' @param reporting_conflict How to model conflict in reporting ("fixed" or "region").
+#' @param mortality_time How to model time in mortality ("national" or "region").
+#' @param reporting_time How to model time in reporting ("national" or "region").
+#' @param standardise Logical.
+#' @param scale_binary Logical.
+#' @param drop_na_y Logical.
+#' @param duplicates Duplicate handling.
+#' @param use_mar_labels Logical.
+#' @param algorithm Inference algorithm.
+#' @param priors Optional prior bundle.
+#' @param prior_PD Logical.
+#' @param backend Backend.
+#' @param stan_model Model name.
+#' @param ... Passed to sampling.
 #'
-#' @return An object of class `vrcfit`.
 #' @export
 vrc_fit <- function(
   data,
   t0,
   mortality_covariates = NULL,
   reporting_covariates = NULL,
-  mortality_monotonic = NULL,
-  reporting_monotonic = NULL,
+  mortality_facilities = NULL,
+  reporting_facilities = NULL,
   mortality_conflict = c("fixed", "region"),
   reporting_conflict = c("fixed", "region"),
   mortality_time = c("national", "region"),
@@ -68,69 +50,45 @@ vrc_fit <- function(
   ...
 ) {
   call <- match.call(expand.dots = TRUE)
-  mortality_conflict <- match.arg(mortality_conflict)
-  reporting_conflict <- match.arg(reporting_conflict)
-  mortality_time <- match.arg(mortality_time)
-  reporting_time <- match.arg(reporting_time)
-  duplicates <- match.arg(duplicates)
-  algorithm <- match.arg(algorithm)
-  backend <- match.arg(backend)
 
   sdat_obj <- vrc_standata(
     data = data,
     t0 = t0,
     mortality_covariates = mortality_covariates,
     reporting_covariates = reporting_covariates,
-    mortality_monotonic = mortality_monotonic,
-    reporting_monotonic = reporting_monotonic,
-    mortality_conflict = mortality_conflict,
-    reporting_conflict = reporting_conflict,
-    mortality_time = mortality_time,
-    reporting_time = reporting_time,
+    mortality_facilities = mortality_facilities,
+    reporting_facilities = reporting_facilities,
+    mortality_conflict = match.arg(mortality_conflict),
+    reporting_conflict = match.arg(reporting_conflict),
+    mortality_time = match.arg(mortality_time),
+    reporting_time = match.arg(reporting_time),
     standardise = standardise,
     scale_binary = scale_binary,
     drop_na_y = drop_na_y,
-    duplicates = duplicates,
+    duplicates = match.arg(duplicates),
     use_mar_labels = use_mar_labels,
     priors = priors,
     prior_PD = prior_PD
   )
 
-  # Allow chains = 0 returns standata
   dots <- list(...)
   if (!is.null(dots$chains) && identical(dots$chains, 0)) {
     return(sdat_obj)
   }
 
-  spec <- vrc_model_spec(model = stan_model, backend = backend)
-
+  spec <- vrc_model_spec(model = stan_model, backend = match.arg(backend))
   sm <- vrc_model(spec)
 
-  if (backend != "rstan") {
-    stop("Only backend='rstan' is implemented", call. = FALSE)
-  }
-
-  if (!requireNamespace("rstan", quietly = TRUE)) {
-    stop("Package 'rstan' is required", call. = FALSE)
-  }
-
-  # default init_r helps avoid extreme initialisation
   if (is.null(dots$init_r)) {
     dots$init_r <- 1e-6
   }
 
-  args <- c(
-    dots,
-    list(
-      object = sm,
-      data = sdat_obj$standata
-    )
-  )
+  args <- c(dots, list(object = sm, data = sdat_obj$standata))
 
-  fit <- if (algorithm == "sampling") {
+  fit <- if (match.arg(algorithm) == "sampling") {
     do.call(rstan::sampling, args)
   } else {
-    args$algorithm <- algorithm
+    args$algorithm <- match.arg(algorithm)
     do.call(rstan::vb, args)
   }
 
@@ -143,13 +101,12 @@ vrc_fit <- function(
     scaling = sdat_obj$scaling,
     priors = sdat_obj$priors,
     priors_resolved = sdat_obj$priors_resolved,
-    algorithm = algorithm,
-    backend = backend,
+    algorithm = match.arg(algorithm),
+    backend = match.arg(backend),
     stan_model = spec$name,
     stan_file = spec$file,
     model_spec = spec
   )
-
   class(out) <- "vrcfit"
   out
 }
@@ -158,25 +115,14 @@ vrc_fit <- function(
 print.vrcfit <- function(x, ...) {
   cat("vrcmort model fit\n")
   cat("- Stan model:", x$stan_model, "\n")
-  if (!is.null(x$stan_file)) {
-    cat("- Stan file:", x$stan_file, "\n")
-  }
-  cat("- Algorithm:", x$algorithm, "\n")
-  cat("- N (observed groups):", x$standata$N, "\n")
-  cat("- N (observed cells):", x$standata$N * x$standata$R, "\n")
   cat(
     "- Dimensions: R=",
     x$standata$R,
     ", T=",
     x$standata$T,
-    ", A=",
-    x$standata$A,
-    ", S=",
-    x$standata$S,
     ", G=",
     x$standata$G,
-    "\n",
-    sep = ""
+    "\n"
   )
   invisible(x)
 }
@@ -187,9 +133,5 @@ summary.vrcfit <- function(
   pars = c("beta_conf", "kappa0", "kappa_post", "gamma_conf", "phi"),
   ...
 ) {
-  if (!requireNamespace("rstan", quietly = TRUE)) {
-    stop("Package 'rstan' is required", call. = FALSE)
-  }
-  s <- rstan::summary(object$stanfit, pars = pars, ...)$summary
-  s
+  rstan::summary(object$stanfit, pars = pars, ...)$summary
 }

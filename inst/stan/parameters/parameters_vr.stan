@@ -17,10 +17,10 @@
   vector<lower=0>[G] sigma_beta_conf;
   matrix[G, K_mort] beta_mort;         // additional mortality covariate effects
 
-  // Monotonic mortality (Identifiable Gaps structure)
-  vector[G] beta_K_mono_mort;          // floor (beta_K)
-  vector<lower=0>[G] B_mono_mort;      // range (beta_1 - beta_K)
-  array[G] simplex[K_mono_mort > 1 ? K_mono_mort - 1 : 1] gap_ratios_mono_mort;
+  // Healthcare facility effects (mortality)
+  // beta_best < 0 (better facilities decrease mortality)
+  vector<upper=0>[G] beta_fac_best_mort; 
+  array[G] simplex[K_fac_mort > 0 ? K_fac_mort : 1] gap_ratios_fac_mort;
 
   // ----------------------------
   // Reporting process: logit rho
@@ -40,10 +40,10 @@
   vector<lower=0>[G] sigma_gamma_conf;
   matrix[G, K_rep] gamma_rep;          // additional reporting covariate effects
 
-  // Monotonic reporting (Identifiable Gaps structure)
-  vector[G] beta_K_mono_rep;           // floor
-  vector<lower=0>[G] B_mono_rep;       // range
-  array[G] simplex[K_mono_rep > 1 ? K_mono_rep - 1 : 1] gap_ratios_mono_rep;
+  // Healthcare facility effects (reporting)
+  // gamma_best > 0 (better facilities increase reporting)
+  vector<lower=0>[G] gamma_fac_best_rep;
+  array[G] simplex[K_fac_rep > 0 ? K_fac_rep : 1] gap_ratios_fac_rep;
 
   // Optional region-specific time random walks (deviations around the national trend)
   array[G] matrix[T, R] v_lambda_region_eps;

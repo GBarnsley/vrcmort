@@ -6,9 +6,9 @@ vector[N * R] mu_rep;
 
   vector[N] log_lik_miss;
 
-  // Store monotonic coefficients for extraction
-  matrix[K_mono_mort, G] beta_mono_mort_pars = beta_mono_mort;
-  matrix[K_mono_rep, G] beta_mono_rep_pars = beta_mono_rep;
+  // Final coefficients for extraction
+  matrix[K_fac_mort, G] beta_fac_mort_pars = beta_fac_mort;
+  matrix[K_fac_rep, G] gamma_fac_rep_pars = gamma_fac_rep;
 
   for (j in 1:N) {
     int g = cause[j];
@@ -25,9 +25,9 @@ vector[N * R] mu_rep;
       if (K_mort > 0) mort_x = X_mort[i] * (beta_mort[g]');
       if (K_rep > 0)  rep_x  = X_rep[i]  * (gamma_rep[g]');
 
-      // Monotonic contributions
-      if (K_mono_mort > 0) mort_x += X_mono_mort[i] * beta_mono_mort[, g];
-      if (K_mono_rep > 0)  rep_x  += X_mono_rep[i]  * beta_mono_rep[, g];
+      // Facility contributions (monotonic)
+      if (K_fac_mort > 0) mort_x += X_fac_mort[i] * beta_fac_mort[, g];
+      if (K_fac_rep > 0)  rep_x  += X_fac_rep[i]  * gamma_fac_rep[, g];
 
       real log_lambda_r = alpha0[g]
                         + alpha_age[a, g]

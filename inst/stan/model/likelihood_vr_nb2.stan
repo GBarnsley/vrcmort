@@ -17,9 +17,9 @@
         if (K_mort > 0) mort_x = X_mort[i] * (beta_mort[g]');
         if (K_rep > 0)  rep_x  = X_rep[i]  * (gamma_rep[g]');
 
-        // Monotonic contributions
-        if (K_mono_mort > 0) mort_x += X_mono_mort[i] * beta_mono_mort[, g];
-        if (K_mono_rep > 0)  rep_x  += X_mono_rep[i]  * beta_mono_rep[, g];
+        // Facility contributions (monotonic)
+        if (K_fac_mort > 0) mort_x += X_fac_mort[i] * beta_fac_mort[, g];
+        if (K_fac_rep > 0)  rep_x  += X_fac_rep[i]  * gamma_fac_rep[, g];
 
         real log_lambda_r = alpha0[g]
                           + alpha_age[a, g]

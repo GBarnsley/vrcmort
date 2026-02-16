@@ -138,7 +138,7 @@ posterior_predict <- function(x, draws = FALSE, probs = c(0.1, 0.5, 0.9), ...) {
   mean_ <- colMeans(mat)
   sd_ <- apply(mat, 2, stats::sd)
   qs <- apply(mat, 2, stats::quantile, probs = probs) |> t()
-  
+
   colnames(qs) <- paste0(
     prefix,
     "_q",
@@ -148,7 +148,7 @@ posterior_predict <- function(x, draws = FALSE, probs = c(0.1, 0.5, 0.9), ...) {
   out <- x$data |>
     dplyr::mutate(
       !!paste0(prefix, "_mean") := as.numeric(mean_),
-      !!paste0(prefix, "_sd")   := as.numeric(sd_)
+      !!paste0(prefix, "_sd") := as.numeric(sd_)
     )
 
   # Add quantiles
