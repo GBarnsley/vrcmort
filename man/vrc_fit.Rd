@@ -9,6 +9,8 @@ vrc_fit(
   t0,
   mortality_covariates = NULL,
   reporting_covariates = NULL,
+  mortality_monotonic = NULL,
+  reporting_monotonic = NULL,
   mortality_conflict = c("fixed", "region"),
   reporting_conflict = c("fixed", "region"),
   mortality_time = c("national", "region"),
@@ -35,6 +37,12 @@ vrc_fit(
 
 \item{reporting_covariates}{Optional formula for additional reporting covariates, excluding \code{conflict}.}
 
+\item{mortality_monotonic}{Optional character vector of column names in \code{data}
+to be treated as monotonic effects in the mortality component.}
+
+\item{reporting_monotonic}{Optional character vector of column names in \code{data}
+to be treated as monotonic effects in the reporting component.}
+
 \item{mortality_conflict}{How to model the conflict effect in the mortality component.
 Use \code{"fixed"} (default) for one effect shared across regions, or \code{"region"}
 for partial pooling (random slopes) by region.}
@@ -52,7 +60,7 @@ region-specific random walk deviations around the national trend.}
 region-specific random walk deviations around the national trend.}
 
 \item{standardise}{Logical. If TRUE (recommended), standardise \code{conflict} and
-covariate columns in model matrices.}
+any covariate columns in model matrices.}
 
 \item{scale_binary}{Logical. If TRUE, also standardise binary dummy columns.}
 

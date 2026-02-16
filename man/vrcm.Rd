@@ -15,37 +15,20 @@ vrcm(
 )
 }
 \arguments{
-\item{mortality}{A \code{\link[=vrc_mortality]{vrc_mortality()}} specification, or a formula.}
+\item{mortality}{A \code{\link[=vrc_mortality]{vrc_mortality()}} specification.}
 
-\item{reporting}{A \code{\link[=vrc_reporting]{vrc_reporting()}} specification, or a formula.}
+\item{reporting}{A \code{\link[=vrc_reporting]{vrc_reporting()}} specification.}
 
-\item{data}{A data.frame in canonical VR long format (see \code{\link[=vrc_standata]{vrc_standata()}}).}
+\item{data}{A data.frame in canonical VR long format.}
 
-\item{t0}{Conflict start time (index or a value in \code{data$time}).}
+\item{t0}{Conflict start time.}
 
-\item{use_mar_labels}{Logical. If TRUE, account for missing region labels
-using a Missing At Random (MAR) assumption with a labeling probability
-\code{omega}. If FALSE (default), rows with missing region labels are ignored.}
+\item{use_mar_labels}{Logical.}
 
-\item{priors}{Optional prior specification created by \code{\link[=vrc_priors]{vrc_priors()}}. If
-\code{NULL} (default), uses \code{\link[=vrc_priors]{vrc_priors()}} with package defaults.}
+\item{priors}{Optional vrc_priors object.}
 
-\item{...}{Passed through to \code{\link[=vrc_fit]{vrc_fit()}}.}
-}
-\value{
-A \code{vrcfit} object, or (if \code{chains = 0}) a standata bundle returned
-by \code{\link[=vrc_standata]{vrc_standata()}}.
+\item{...}{Passed to \code{\link[=vrc_fit]{vrc_fit()}}.}
 }
 \description{
-High-level wrapper around \code{\link[=vrc_fit]{vrc_fit()}} modelled after the user experience of
-packages like \code{epidemia} and \code{rstanarm}. You specify a mortality component and a reporting
-component, and \code{vrcm()} handles data preparation and model fitting.
-
-The fitted model separates:
-\itemize{
-\item a latent mortality process (\code{lambda}), and
-\item a reporting completeness process (\code{rho}).
-}
-
-Both processes include a conflict proxy by default.
+Fit a VR mortality + reporting model
 }

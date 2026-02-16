@@ -22,6 +22,10 @@ vrc_priors(
   sigma_v_rho = normal(0, 0.2, autoscale = FALSE),
   sigma_gamma_conf = normal(0, 0.5, autoscale = FALSE),
   sigma_v_rho_region = normal(0, 0.2, autoscale = FALSE),
+  beta_K_mono_mort = normal(0, 5, autoscale = FALSE),
+  B_mono_mort = normal(0, 5, autoscale = FALSE),
+  beta_K_mono_rep = normal(0, 5, autoscale = FALSE),
+  B_mono_rep = normal(0, 5, autoscale = FALSE),
   delta_age_incr = normal(0, 0.5, autoscale = FALSE),
   delta_age_scale = normal(0, 1, autoscale = FALSE),
   phi = exponential(1),
@@ -65,6 +69,14 @@ logit(0.70), cause 2 on logit(0.90), and remaining causes on logit(0.85).}
 \item{sigma_gamma_conf}{Prior scale for region-varying conflict slope scales (reporting).}
 
 \item{sigma_v_rho_region}{Prior scale for region-specific time RW scales (reporting).}
+
+\item{beta_K_mono_mort}{Prior for mortality monotonic baseline.}
+
+\item{B_mono_mort}{Prior for mortality monotonic range.}
+
+\item{beta_K_mono_rep}{Prior for reporting monotonic baseline.}
+
+\item{B_mono_rep}{Prior for reporting monotonic range.}
 
 \item{delta_age_incr}{Prior scale for increments in the monotone age penalty.}
 

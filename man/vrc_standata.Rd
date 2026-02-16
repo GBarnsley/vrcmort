@@ -9,6 +9,8 @@ vrc_standata(
   t0,
   mortality_covariates = NULL,
   reporting_covariates = NULL,
+  mortality_monotonic = NULL,
+  reporting_monotonic = NULL,
   mortality_conflict = c("fixed", "region"),
   reporting_conflict = c("fixed", "region"),
   mortality_time = c("national", "region"),
@@ -25,77 +27,39 @@ vrc_standata(
 \arguments{
 \item{data}{A data.frame in VR long format.}
 
-\item{t0}{Conflict start time. May be an integer index, or a value that
-matches a value in \code{data$time}.}
+\item{t0}{Conflict start time.}
 
-\item{mortality_covariates}{Optional formula specifying additional covariates
-for the mortality (log-rate) component, excluding \code{conflict}.}
+\item{mortality_covariates}{Optional formula for additional mortality covariates.}
 
-\item{reporting_covariates}{Optional formula specifying additional covariates
-for the reporting (logit-completeness) component, excluding \code{conflict}.}
+\item{reporting_covariates}{Optional formula for additional reporting covariates.}
 
-\item{mortality_conflict}{How to model the conflict effect in the mortality
-component. Use \code{"fixed"} (default) for one effect shared across regions,
-or \code{"region"} for partial pooling (random slopes) by region.}
+\item{mortality_monotonic}{Optional character vector of level column names for mortality.}
 
-\item{reporting_conflict}{How to model the conflict effect in the reporting
-component. Use \code{"fixed"} (default) for one effect shared across regions,
-or \code{"region"} for partial pooling (random slopes) by region.}
+\item{reporting_monotonic}{Optional character vector of level column names for reporting.}
 
-\item{mortality_time}{How to model time variation in the mortality component.
-\code{"national"} uses a single random walk shared across regions; \code{"region"}
-adds region-specific random walk deviations around the national trend.}
+\item{mortality_conflict}{How to model conflict in mortality ("fixed" or "region").}
 
-\item{reporting_time}{How to model time variation in the reporting component.
-\code{"national"} uses a single random walk shared across regions; \code{"region"}
-adds region-specific random walk deviations around the national trend.}
+\item{reporting_conflict}{How to model conflict in reporting ("fixed" or "region").}
 
-\item{standardise}{Logical. If TRUE (recommended), standardise \code{conflict} and
-any covariate columns produced by the formulas.}
+\item{mortality_time}{How to model time in mortality ("national" or "region").}
 
-\item{scale_binary}{Logical. If TRUE, binary dummy columns in model matrices
-are also standardised. Defaults to FALSE.}
+\item{reporting_time}{How to model time in reporting ("national" or "region").}
 
-\item{drop_na_y}{Logical. If TRUE (default), rows with missing \code{y} are removed.}
+\item{standardise}{Logical. If TRUE, standardise non-monotonic covariates.}
 
-\item{duplicates}{How to handle duplicate identifier rows. One of
-\code{"error"} (default) or \code{"sum"}.}
+\item{scale_binary}{Logical.}
 
-\item{use_mar_labels}{Logical. If TRUE, account for missing region labels
-using a Missing At Random (MAR) assumption with a labeling probability
-\code{omega}. If FALSE (default), rows with missing region labels are ignored.}
+\item{drop_na_y}{Logical.}
 
-\item{priors}{Optional prior specification created by \code{\link[=vrc_priors]{vrc_priors()}}. If
-\code{NULL} (default), uses \code{\link[=vrc_priors]{vrc_priors()}} with package defaults.}
+\item{duplicates}{Handling of duplicates.}
 
-\item{prior_PD}{Logical. If TRUE, Stan ignores the likelihood and samples from
-the prior. Useful for prior predictive checks.}
-}
-\value{
-A list with components:
-\itemize{
-\item \code{standata}: list passed to Stan
-\item \code{df}: processed data used for fitting (subset if \code{drop_na_y})
-\item \code{meta}: dimension metadata and level mappings
-\item \code{scaling}: scaling information for \code{conflict}, \code{X_mort}, and \code{X_rep}
-}
+\item{use_mar_labels}{Logical.}
+
+\item{priors}{Optional vrc_priors object.}
+
+\item{prior_PD}{Logical.}
 }
 \description{
 Convert a long-format VR dataset into the list structure expected by the
 Stan model shipped with the package.
-
-The Stan model expects one row per cell:
-\code{region} x \code{time} x \code{age} x \code{sex} x \code{cause}.
-
-The minimal required columns are:
-\itemize{
-\item \code{region}, \code{time}, \code{age}, \code{sex}, \code{cause}: identifiers
-\item \code{y}: observed VR counts (integer, can be \code{NA})
-\item \code{exposure}: person-time at risk (numeric, > 0). If \code{exposure} is absent,
-\code{pop} is used as a fallback.
-\item \code{conflict}: conflict intensity proxy (numeric)
-}
-
-Additional covariates can be included via \code{mortality_covariates} and
-\code{reporting_covariates}.
 }

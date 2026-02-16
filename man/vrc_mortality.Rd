@@ -6,31 +6,20 @@
 \usage{
 vrc_mortality(
   formula = ~1,
+  monotonic = NULL,
   conflict = c("fixed", "region"),
   time = c("national", "region")
 )
 }
 \arguments{
-\item{formula}{A model formula. The default \code{~ 1} specifies no additional
-covariates.}
+\item{formula}{A model formula for additional mortality covariates.}
 
-\item{conflict}{How to model the conflict effect in the mortality component.
-Use \code{"fixed"} for one effect shared across regions (per cause), or
-\code{"region"} for partial pooling (random slopes) by region (per cause).}
+\item{monotonic}{Optional character vector of level column names to treat as monotonic.}
 
-\item{time}{How to model time variation in the mortality component.
-\code{"national"} uses a single random walk shared across regions (per cause).
-\code{"region"} adds region-specific random walk deviations around the national
-trend.}
-}
-\value{
-An object of class \code{vrc_mortality}.
+\item{conflict}{How to model conflict in mortality ("fixed" or "region").}
+
+\item{time}{How to model time in mortality ("national" or "region").}
 }
 \description{
-Create a mortality component specification for \code{\link[=vrcm]{vrcm()}}. This is a light
-wrapper around a formula describing additional mortality covariates (beyond
-the always-included conflict proxy).
-
-The formula should not include \code{conflict}; conflict is included in the core
-Stan model as \code{beta_conf}.
+Create a mortality component specification for \code{\link[=vrcm]{vrcm()}}.
 }
